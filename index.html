@@ -804,24 +804,19 @@ body{
         <i class="fa-solid fa-arrow-right"></i> Kod olish
       </button>
       <div class="info-links" style="margin-top:20px">
-        <div class="ilink">
+        <div class="ilink" onclick="toast('Guruh xavolasi tez orada qo\'shiladi!', 'ok')">
           <div class="ilink-ic" style="background:var(--accent-dim)"><i class="fa-brands fa-telegram" style="color:var(--accent)"></i></div>
           <div class="ilink-text"><strong>Telegram Community</strong><span>8000 dan ortiq a'zo</span></div>
           <span class="ilink-chev"><i class="fa-solid fa-chevron-right"></i></span>
         </div>
-        <div class="ilink">
+        <div class="ilink" onclick="openModal('m-why')">
           <div class="ilink-ic" style="background:var(--accent-dim)"><i class="fa-solid fa-lock" style="color:var(--accent)"></i></div>
           <div class="ilink-text"><strong>Nima uchun ulash kerak?</strong><span>Qanday ishlaydi</span></div>
           <span class="ilink-chev"><i class="fa-solid fa-chevron-right"></i></span>
         </div>
-        <div class="ilink">
-          <div class="ilink-ic" style="background:var(--warn-dim)"><i class="fa-solid fa-bolt" style="color:var(--warn)"></i></div>
-          <div class="ilink-text"><strong>Junctionbot.io</strong><span>Xavfsizlik kafolati</span></div>
-          <span class="ilink-chev"><i class="fa-solid fa-chevron-right"></i></span>
-        </div>
-        <div class="ilink">
+        <div class="ilink" onclick="openModal('m-about')">
           <div class="ilink-ic" style="background:var(--success-dim)"><i class="fa-solid fa-users" style="color:var(--success)"></i></div>
-          <div class="ilink-text"><strong>Biz haqimizda</strong><span>2017 yildan faoliyat yuritamiz</span></div>
+          <div class="ilink-text"><strong>Biz haqimizda</strong><span>Professional tizim</span></div>
           <span class="ilink-chev"><i class="fa-solid fa-chevron-right"></i></span>
         </div>
       </div>
@@ -1308,6 +1303,32 @@ body{
   </div>
 </div>
 
+<!-- INFO MODALS -->
+<div class="modal-bg" id="m-why">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="fa-solid fa-lock" style="color:var(--accent);margin-right:8px"></i>Nima uchun ulash kerak?</div>
+    <div class="modal-sub" style="text-align: left;">
+      <p style="margin-bottom: 12px; font-size: 14px; color: var(--text);">Avto Pass bot xabarlarni yopiq kanal va guruhlardan o'qiy olishi uchun sizning Telegram akkauntingiz orqali ulanishi zarur.</p>
+      <p style="margin-bottom: 8px; font-size: 14px; color: var(--text);"><b>Bu xavfsizmi?</b></p>
+      <p style="font-size: 13px; color: var(--text2);">Ha, to'liq xavfsiz! Tizim rasmiy Telegram API (Telethon) yordamida ulanadi va ma'lumotlaringiz hech qayerda saqlanmaydi. U faqatgina siz o'rnatgan qoidalar bo'yicha belgilangan chatlardan kelgan xabarlarni kerakli manzilga yo'naltiradi, xolos.</p>
+    </div>
+    <button class="btn btn-p" onclick="closeModal('m-why')" style="margin-top:20px">Tushunarli</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="m-about">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="fa-solid fa-users" style="color:var(--success);margin-right:8px"></i>Biz haqimizda</div>
+    <div class="modal-sub" style="text-align: left;">
+      <p style="margin-bottom: 12px; font-size: 14px; color: var(--text);"><b>Avto Pass bot</b> - bu Telegram'da kanallar, guruhlar va shaxsiy chatlardagi xabarlarni oson boshqarish hamda avtomatlashtirish uchun mo'ljallangan professional vosita.</p>
+      <p style="font-size: 13px; color: var(--text2);">Bizning maqsadimiz mijozlar vaqtini tejash, e'lonlarni tezkor qayta ishlash hamda bizneslarni Telegram orqali yuritishda to'liq qulaylik va yuqori ishonchlilikni ta'minlashdir.</p>
+    </div>
+    <button class="btn btn-p" onclick="closeModal('m-about')" style="margin-top:20px">Yopish</button>
+  </div>
+</div>
+
 <div class="toast" id="tst"></div>
 
 <!-- MENU PANEL -->
@@ -1345,7 +1366,7 @@ body{
 // ═══════════════════════════════
 // CONFIG
 // ═══════════════════════════════
-const API = 'https://avtopassbot-production.up.railway.app';
+const API = 'https://forwardbot-production-1f08.up.railway.app';
 let UID = 'demo_user';
 if(window.Telegram?.WebApp){
   window.Telegram.WebApp.ready();
