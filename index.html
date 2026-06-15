@@ -1452,6 +1452,10 @@ body{
           <input type="text" class="inp" id="adm-set-channel" placeholder="-100...">
           <label style="font-size:12px; color:var(--muted); margin:12px 0 6px; display:block">Oylik obuna narxi</label>
           <input type="number" class="inp" id="adm-set-price" placeholder="15000">
+          <label style="font-size:12px; color:var(--muted); margin:12px 0 6px; display:block">💳 Karta raqami</label>
+          <input type="text" class="inp" id="adm-set-card" placeholder="8600 0000 0000 0000">
+          <label style="font-size:12px; color:var(--muted); margin:12px 0 6px; display:block">Karta egasi</label>
+          <input type="text" class="inp" id="adm-set-card-owner" placeholder="Admin">
           <button class="btn btn-p" style="margin-top:16px" onclick="saveAdminSettings()">Saqlash</button>
         </div>
       </div>
@@ -1467,6 +1471,68 @@ body{
     <div class="modal-sub">Iltimos, parolni kiriting</div>
     <input type="password" class="inp" id="inp-admin-pass" placeholder="Parol...">
     <button class="btn btn-p" style="margin-top:16px" onclick="loginAdmin()">Kirish</button>
+  </div>
+</div>
+
+<!-- PROFILE SCREEN -->
+<div class="screen" id="s-profile">
+  <div class="hdr">
+    <button class="hdr-back" onclick="go('s-home')"><i class="fa-solid fa-arrow-left"></i></button>
+    <div class="hdr-title">Profil</div>
+  </div>
+  <div class="content" style="padding:16px">
+    <!-- User Info -->
+    <div style="text-align:center; margin-bottom:20px">
+      <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#9b59b6,#5b8fff);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;margin:0 auto 12px" id="prof-avatar">?</div>
+      <div style="font-size:18px;font-weight:700" id="prof-name">Foydalanuvchi</div>
+      <div style="font-size:13px;color:var(--muted)" id="prof-uid"></div>
+    </div>
+
+    <!-- Subscription Status -->
+    <div class="card" style="margin:0 0 14px">
+      <div style="padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <span style="font-size:13px;color:var(--muted)">Obuna holati</span>
+          <span style="font-size:13px;font-weight:700;padding:4px 10px;border-radius:var(--r-pill)" id="prof-status-badge">—</span>
+        </div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:4px" id="prof-expires-label">Muddati:</div>
+        <div style="font-size:15px;font-weight:600" id="prof-expires-val">—</div>
+        <div style="font-size:12px;color:var(--warn);margin-top:8px;display:none" id="prof-trial-msg">
+          <i class="fa-solid fa-clock"></i> Sinov muddati — 7 kun bepul!
+        </div>
+      </div>
+    </div>
+
+    <!-- Buy Subscription -->
+    <div class="card" style="margin:0 0 14px">
+      <div style="padding:16px">
+        <div style="font-size:15px;font-weight:700;margin-bottom:14px"><i class="fa-solid fa-crown" style="color:var(--warn);margin-right:6px"></i>Obuna sotib olish</div>
+        
+        <div class="sub-plan-card sel" onclick="selectProfileMonths(1)" id="prof-plan-1">
+          <div style="font-size:14px;font-weight:600;color:var(--accent)">1 Oylik</div>
+          <div class="sub-price" id="prof-price-1">15,000 so'm</div>
+        </div>
+        
+        <div class="sub-plan-card" onclick="selectProfileMonths(3)" id="prof-plan-3">
+          <div style="font-size:14px;font-weight:600;color:var(--success)">3 Oylik</div>
+          <div class="sub-price" id="prof-price-3">45,000 so'm</div>
+        </div>
+        
+        <div class="sub-plan-card" onclick="selectProfileMonths(6)" id="prof-plan-6">
+          <div style="font-size:14px;font-weight:600;color:#e67e22">6 Oylik</div>
+          <div class="sub-price" id="prof-price-6">90,000 so'm</div>
+        </div>
+        
+        <div class="sub-plan-card" onclick="selectProfileMonths(12)" id="prof-plan-12">
+          <div style="font-size:14px;font-weight:600;color:var(--warn)">12 Oylik <span style="font-size:11px;background:var(--warn-dim);padding:2px 6px;border-radius:var(--r-pill);margin-left:4px">Tejamkor</span></div>
+          <div class="sub-price" id="prof-price-12">180,000 so'm</div>
+        </div>
+        
+        <button class="btn btn-p" onclick="requestProfileSub()" id="btn-prof-sub">
+          <i class="fa-solid fa-cart-shopping"></i> Obuna sotib olish
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1488,6 +1554,11 @@ body{
       <div class="card-row" onclick="closeModal('m-menu');go('s-home')">
         <div style="width:34px;height:34px;border-radius:var(--r-sm);background:var(--accent-dim);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:13px;flex-shrink:0"><i class="fa-solid fa-house"></i></div>
         <div style="flex:1"><strong style="font-size:14px">Bosh sahifa</strong></div>
+        <span class="chev"><i class="fa-solid fa-chevron-right" style="font-size:9px"></i></span>
+      </div>
+      <div class="card-row" onclick="closeModal('m-menu');go('s-profile')">
+        <div style="width:34px;height:34px;border-radius:var(--r-sm);background:rgba(155,89,182,.15);display:flex;align-items:center;justify-content:center;color:#9b59b6;font-size:13px;flex-shrink:0"><i class="fa-solid fa-user"></i></div>
+        <div style="flex:1"><strong style="font-size:14px">Profil</strong></div>
         <span class="chev"><i class="fa-solid fa-chevron-right" style="font-size:9px"></i></span>
       </div>
       <div class="card-row" onclick="closeModal('m-menu');go('s-rules')">
@@ -1534,9 +1605,16 @@ async function checkSubStatus(){
   try {
     const r = await fetch(`${API}/sub/status/${UID}`);
     const d = await r.json();
+    window._subData = d;
     subPrice = d.price || 15000;
-    document.getElementById('subPriceDisplay').textContent = subPrice.toLocaleString('uz-UZ') + " so'm";
-    document.getElementById('subPriceDisplay3').textContent = (subPrice * 3).toLocaleString('uz-UZ') + " so'm";
+    if(document.getElementById('subPriceDisplay')) document.getElementById('subPriceDisplay').textContent = subPrice.toLocaleString('uz-UZ') + " so'm";
+    if(document.getElementById('subPriceDisplay3')) document.getElementById('subPriceDisplay3').textContent = (subPrice * 3).toLocaleString('uz-UZ') + " so'm";
+    if(d.card_number) {
+      const cn = document.getElementById('pay-card-num');
+      const co = document.getElementById('pay-card-owner');
+      if(cn) cn.textContent = d.card_number;
+      if(co) co.textContent = d.card_owner || 'Admin';
+    }
     if(!d.active) {
       go('s-sub');
     }
@@ -1675,6 +1753,8 @@ async function loadAdminSettings(){
     document.getElementById('adm-set-pass').value = d.password;
     document.getElementById('adm-set-channel').value = d.channel_id;
     document.getElementById('adm-set-price').value = d.monthly_price;
+    document.getElementById('adm-set-card').value = d.card_number || '';
+    document.getElementById('adm-set-card-owner').value = d.card_owner || '';
   } catch(e){}
 }
 
@@ -1685,12 +1765,89 @@ async function saveAdminSettings(){
       body: JSON.stringify({
         password: document.getElementById('adm-set-pass').value,
         channel_id: document.getElementById('adm-set-channel').value,
-        monthly_price: parseInt(document.getElementById('adm-set-price').value) || 15000
+        monthly_price: parseInt(document.getElementById('adm-set-price').value) || 15000,
+        card_number: document.getElementById('adm-set-card').value || '8600 0000 0000 0000',
+        card_owner: document.getElementById('adm-set-card-owner').value || 'Admin'
       })
     });
     toast("Saqlandi!", "ok");
     adminPass = document.getElementById('adm-set-pass').value;
   } catch(e){}
+}
+
+// ═══════════════════════════════
+// PROFILE FUNCTIONS
+// ═══════════════════════════════
+let profSelMonths = 1;
+
+function loadProfile() {
+  const u = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  if(u) {
+    const name = [u.first_name, u.last_name].filter(Boolean).join(' ');
+    document.getElementById('prof-name').textContent = name || 'Foydalanuvchi';
+    document.getElementById('prof-avatar').textContent = (name || '?')[0].toUpperCase();
+    document.getElementById('prof-uid').textContent = 'ID: ' + u.id;
+  }
+  const d = window._subData;
+  if(d) {
+    const badge = document.getElementById('prof-status-badge');
+    const exVal = document.getElementById('prof-expires-val');
+    const trialMsg = document.getElementById('prof-trial-msg');
+    if(d.active) {
+      badge.textContent = d.trial ? '🎁 Sinov' : '✅ Aktiv';
+      badge.style.background = d.trial ? 'var(--warn-dim)' : 'var(--success-dim)';
+      badge.style.color = d.trial ? 'var(--warn)' : 'var(--success)';
+      if(d.trial) trialMsg.style.display = 'block';
+      const expDate = new Date(d.expires_at * 1000);
+      exVal.textContent = expDate.toLocaleDateString('uz-UZ', {day:'2-digit', month:'long', year:'numeric'});
+    } else {
+      badge.textContent = '❌ Muddati tugagan';
+      badge.style.background = 'var(--danger-dim)';
+      badge.style.color = 'var(--danger)';
+      exVal.textContent = 'Obuna sotib oling';
+    }
+    // Update prices
+    const p = d.price || 15000;
+    document.getElementById('prof-price-1').textContent = p.toLocaleString('uz-UZ') + " so'm";
+    document.getElementById('prof-price-3').textContent = (p*3).toLocaleString('uz-UZ') + " so'm";
+    document.getElementById('prof-price-6').textContent = (p*6).toLocaleString('uz-UZ') + " so'm";
+    document.getElementById('prof-price-12').textContent = (p*12).toLocaleString('uz-UZ') + " so'm";
+  }
+}
+
+function selectProfileMonths(m) {
+  profSelMonths = m;
+  [1,3,6,12].forEach(x => {
+    const el = document.getElementById(`prof-plan-${x}`);
+    if(el) el.classList.toggle('sel', x === m);
+  });
+}
+
+async function requestProfileSub() {
+  const btn = document.getElementById('btn-prof-sub');
+  btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Kuting...';
+  try {
+    const r = await fetch(`${API}/sub/request`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        user_id: String(UID), months: profSelMonths,
+        phone: '',
+        name: window.Telegram?.WebApp?.initDataUnsafe?.user?.first_name || '',
+        username: window.Telegram?.WebApp?.initDataUnsafe?.user?.username || ''
+      })
+    });
+    const d = await r.json();
+    if(d.ok) {
+      document.getElementById('pay-amount-display').textContent = d.amount.toLocaleString('uz-UZ') + " so'm";
+      const sd = window._subData;
+      if(sd && sd.card_number) {
+        document.getElementById('pay-card-num').textContent = sd.card_number;
+        document.getElementById('pay-card-owner').textContent = sd.card_owner || 'Admin';
+      }
+      go('s-pay');
+    } else { toast('Xatolik','err'); }
+  } catch(e){ toast('Xatolik','err'); }
+  btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-cart-shopping"></i> Obuna sotib olish';
 }
 
 
@@ -1716,6 +1873,7 @@ function go(id){
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
   if(id==='s-home') { loadHomeStatus(); checkSubStatus(); }
+  if(id==='s-profile') { loadProfile(); }
   if(id==='s-rules') renderRules();
   if(id==='s-rsettings') renderRuleSettings();
   if(id==='s-filters') renderFilters();
@@ -1845,11 +2003,21 @@ function togglePass(){
 // ═══════════════════════════════
 // CHATS
 // ═══════════════════════════════
-async function loadChats(){
+let _chatsCache = null;
+let _chatsCacheTime = 0;
+async function loadChats(force){
+  // Cache for 60 seconds
+  if(!force && _chatsCache && (Date.now() - _chatsCacheTime < 60000)) {
+    allChats = _chatsCache;
+    renderList('src'); renderList('dst');
+    return;
+  }
   try{
     const r=await fetch(`${API}/chats/${UID}`);
     const d=await r.json();
     allChats=d.chats;
+    _chatsCache = allChats;
+    _chatsCacheTime = Date.now();
   }catch(e){ loadDemoChats(); }
   renderList('src'); renderList('dst');
 }
