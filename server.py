@@ -13,9 +13,12 @@ from pathlib import Path
 from datetime import datetime
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+from telegram import Update, WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
@@ -32,6 +35,10 @@ API_HASH = os.getenv("API_HASH", "your_api_hash")
 DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
 DATA_DIR.mkdir(exist_ok=True)
 
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8881052991:AAFop1tZG0q4s8vnIkK76GSHCwE9X5qp9aM")
+MINI_APP_URL = os.getenv("MINI_APP_URL", "https://jahongirsteam1-ux.github.io/avtopass_bot/")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://avtopassbot-production.up.railway.app")
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("forwardbot")
 
@@ -44,6 +51,23 @@ clients: Dict[str, TelegramClient] = {}
 pending: Dict[str, dict] = {}
 # Registered handlers: {uid: bool} — duplicate oldini olish
 handlers_registered: set = set()
+
+# PTB Bot ilovasi
+ptb_app = Application.builder().token(BOT_TOKEN).build()
+
+async def start_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    u = update.effective_user
+    kb = InlineKeyboardMarkup([[
+        InlineKeyboardButton("🚀 Tizimga kirish", web_app=WebAppInfo(url=MINI_APP_URL))
+    ]])
+    text = (
+        f"<b>👋 Salom, {u.first_name}!</b>\n\n"
+        "<b>Auto Chek Bot</b> ga xush kelibsiz.\n"
+        "<i>Tizimga kirish uchun quyidagi tugmani bosing:</i>"
+    )
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=kb)
+
+ptb_app.add_handler(CommandHandler("start", start_cmd))
 
 # ═══════════════════════════════════════
 # DATA
@@ -260,6 +284,16 @@ async def get_client(uid: str) -> Optional[TelegramClient]:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("ForwardBot backend ishga tushdi!")
+    
+    # Telegram Bot webhook o'rnatish
+    try:
+        await ptb_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
+        await ptb_app.initialize()
+        await ptb_app.start()
+        log.info(f"Webhook o'rnatildi: {WEBHOOK_URL}/webhook")
+    except Exception as e:
+        log.error(f"Webhook o'rnatishda xatolik: {e}")
+
     # Barcha saqlangan sessionlarni tiklash
     for f in DATA_DIR.glob("*.json"):
         uid = f.stem
@@ -277,9 +311,22 @@ async def lifespan(app: FastAPI):
         try: await c.disconnect()
         except: pass
     log.info("Barcha clientlar yopildi")
+    
+    # Botni to'xtatish
+    try:
+        await ptb_app.stop()
+        await ptb_app.shutdown()
+    except: pass
 
 app = FastAPI(title="ForwardBot API", version="3.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+@app.post("/webhook")
+async def webhook(request: Request):
+    data = await request.json()
+    update = Update.de_json(data, ptb_app.bot)
+    await ptb_app.process_update(update)
+    return {"ok": True}
 
 # ═══════════════════════════════════════
 # AUTH
