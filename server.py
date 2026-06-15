@@ -69,10 +69,98 @@ async def start_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 ptb_app.add_handler(CommandHandler("start", start_cmd))
 
+from telegram.ext import MessageHandler, filters
+async def channel_post_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.channel_post
+    if not msg: return
+    admin_cfg = load_admin()
+    target_id = str(admin_cfg.get("channel_id", ""))
+    if not target_id or str(msg.chat_id) != target_id: return
+    text = msg.text or msg.caption or ""
+    
+    match = re.search(r"\+\s*([\d\s.,]+?)\s*UZS", text, re.IGNORECASE)
+    if not match: return
+    
+    raw = match.group(1).replace(",", "").replace(".", "").replace(" ", "")
+    try: amount = int(raw)
+    except: return
+    
+    pending = load_pending()
+    found_key = None
+    for k, v in pending.items():
+        if v.get("amount") == amount:
+            found_key = k
+            break
+            
+    if found_key:
+        p_data = pending.pop(found_key)
+        save_pending(pending)
+        uid = p_data["user_id"]
+        months = p_data["months"]
+        subs = load_subs()
+        user_sub = subs.get(uid, {})
+        now = datetime.now().timestamp()
+        current_exp = user_sub.get("expires_at", now)
+        if current_exp < now: current_exp = now
+        user_sub["expires_at"] = current_exp + (months * 30 * 24 * 3600)
+        user_sub["phone"] = p_data.get("phone", user_sub.get("phone", ""))
+        user_sub["name"] = p_data.get("name", user_sub.get("name", ""))
+        user_sub["username"] = p_data.get("username", user_sub.get("username", ""))
+        subs[uid] = user_sub
+        save_subs(subs)
+        try:
+            await ctx.bot.send_message(
+                chat_id=uid,
+                text=f"✅ To'lovingiz tasdiqlandi! ({amount} so'm)\nSizning obunangiz {months} oyga uzaytirildi!"
+            )
+        except: pass
+
+ptb_app.add_handler(MessageHandler(filters.ChatType.CHANNEL, channel_post_handler))
+
+
+
 # ═══════════════════════════════════════
 # DATA
 # ═══════════════════════════════════════
 def ufile(uid): return DATA_DIR / f"{uid}.json"
+
+
+def load_admin():
+    f = DATA_DIR / "admin.json"
+    if f.exists():
+        try: return json.loads(f.read_text("utf-8"))
+        except: pass
+    return {"password": "admin", "channel_id": "", "monthly_price": 15000}
+
+def save_admin(data):
+    (DATA_DIR / "admin.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
+
+def load_subs():
+    f = DATA_DIR / "subscriptions.json"
+    if f.exists():
+        try: return json.loads(f.read_text("utf-8"))
+        except: pass
+    return {}
+
+def save_subs(data):
+    (DATA_DIR / "subscriptions.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
+
+def load_pending():
+    f = DATA_DIR / "pending_payments.json"
+    if f.exists():
+        try: return json.loads(f.read_text("utf-8"))
+        except: pass
+    return {}
+
+def save_pending(data):
+    (DATA_DIR / "pending_payments.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
+
+def check_sub(uid: str) -> bool:
+    if uid == "demo_user": return True
+    subs = load_subs()
+    user_sub = subs.get(uid)
+    if not user_sub: return False
+    return datetime.now().timestamp() < user_sub.get("expires_at", 0)
 
 def load(uid):
     f = ufile(uid)
@@ -96,6 +184,22 @@ class CodeReq(BaseModel):
     phone: str
     code: str
     phone_code_hash: str
+
+
+class AdminLogin(BaseModel):
+    password: str
+
+class AdminSettings(BaseModel):
+    password: str
+    channel_id: str
+    monthly_price: int
+
+class SubRequest(BaseModel):
+    user_id: str
+    months: int
+    phone: str = ""
+    name: str = ""
+    username: str = ""
 
 class PassReq(BaseModel):
     user_id: str
@@ -194,6 +298,8 @@ def register_handler(uid: str, client: TelegramClient):
                     sender_name = " ".join(p for p in parts if p)
             except: pass
 
+            if not check_sub(uid):
+                continue
             if not check_filters(text, views, reactions, sender_name, rule.get("filters", [])):
                 continue
 
@@ -454,6 +560,8 @@ async def get_chats(uid: str, q: str = ""):
 # ═══════════════════════════════════════
 @app.post("/rules/add")
 async def add_rule(req: RuleReq):
+    if not check_sub(req.user_id):
+        raise HTTPException(status_code=403, detail="Obuna muddati tugagan. Iltimos, obuna sotib oling.")
     data = load(req.user_id)
     rule = {
         "id": datetime.now().strftime("%Y%m%d%H%M%S%f"),
