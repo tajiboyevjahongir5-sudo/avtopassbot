@@ -36,8 +36,8 @@ DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
 DATA_DIR.mkdir(exist_ok=True)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8881052991:AAFop1tZG0q4s8vnIkK76GSHCwE9X5qp9aM")
-MINI_APP_URL = os.getenv("MINI_APP_URL", "https://jahongirsteam1-ux.github.io/avtopass_bot/")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://avtopassbot-production.up.railway.app")
+MINI_APP_URL = os.getenv("MINI_APP_URL", "https://jahongirsteam1-ux.github.io/tezlashtiramiz/")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://forwardbot-production-1f08.up.railway.app")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("forwardbot")
@@ -130,7 +130,7 @@ def load_admin():
     if f.exists():
         try: return json.loads(f.read_text("utf-8"))
         except: pass
-    return {"password": "admin", "channel_id": "", "monthly_price": 15000}
+    return {"password": "admin", "channel_id": "", "monthly_price": 15000, "card_number": "8600 0000 0000 0000", "card_owner": "Admin"}
 
 def save_admin(data):
     (DATA_DIR / "admin.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
@@ -159,7 +159,16 @@ def check_sub(uid: str) -> bool:
     if uid == "demo_user": return True
     subs = load_subs()
     user_sub = subs.get(uid)
-    if not user_sub: return False
+    if not user_sub:
+        # Yangi foydalanuvchi — 7 kunlik bepul sinov
+        now = datetime.now().timestamp()
+        subs[uid] = {
+            "expires_at": now + (7 * 24 * 3600),
+            "trial": True,
+            "registered_at": now
+        }
+        save_subs(subs)
+        return True
     return datetime.now().timestamp() < user_sub.get("expires_at", 0)
 
 def load(uid):
@@ -193,6 +202,8 @@ class AdminSettings(BaseModel):
     password: str
     channel_id: str
     monthly_price: int
+    card_number: str = "8600 0000 0000 0000"
+    card_owner: str = "Admin"
 
 class SubRequest(BaseModel):
     user_id: str
@@ -729,6 +740,8 @@ async def save_admin_settings(req: AdminSettings, password: str = ""):
     cfg["password"] = req.password
     cfg["channel_id"] = req.channel_id
     cfg["monthly_price"] = req.monthly_price
+    cfg["card_number"] = req.card_number
+    cfg["card_owner"] = req.card_owner
     save_admin(cfg)
     return {"ok": True}
 
@@ -743,13 +756,21 @@ async def sub_status(uid: str):
     price = cfg.get("monthly_price", 15000)
     if uid == "demo_user":
         return {"active": True, "price": price}
+    card_number = cfg.get("card_number", "8600 0000 0000 0000")
+    card_owner = cfg.get("card_owner", "Admin")
     subs = load_subs()
     user_sub = subs.get(uid)
     if not user_sub:
-        return {"active": False, "price": price, "expires_at": 0}
+        # Yangi foydalanuvchi — avtomatik 7 kunlik trial
+        now = datetime.now().timestamp()
+        user_sub = {"expires_at": now + (7 * 24 * 3600), "trial": True, "registered_at": now}
+        subs[uid] = user_sub
+        save_subs(subs)
+        return {"active": True, "price": price, "expires_at": user_sub["expires_at"], "trial": True, "card_number": card_number, "card_owner": card_owner}
     now = datetime.now().timestamp()
     active = user_sub.get("expires_at", 0) > now
-    return {"active": active, "price": price, "expires_at": user_sub.get("expires_at", 0)}
+    trial = user_sub.get("trial", False) and active
+    return {"active": active, "price": price, "expires_at": user_sub.get("expires_at", 0), "trial": trial, "card_number": card_number, "card_owner": card_owner}
 
 @app.post("/sub/request")
 async def sub_request(req: SubRequest):
