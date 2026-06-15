@@ -637,6 +637,149 @@ async def get_stats(uid: str):
         "forwarded": sum(r.get("count", 0) for r in rules),
     }
 
+# ═══════════════════════════════════════
+# ADMIN ENDPOINTS
+# ═══════════════════════════════════════
+@app.post("/admin/login")
+async def admin_login(req: AdminLogin):
+    cfg = load_admin()
+    if req.password == cfg.get("password", "admin"):
+        return {"ok": True}
+    raise HTTPException(403, "Parol noto'g'ri")
+
+@app.get("/admin/stats")
+async def admin_stats(password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    subs = load_subs()
+    now = datetime.now().timestamp()
+    active = sum(1 for s in subs.values() if s.get("expires_at", 0) > now)
+    expired = len(subs) - active
+    price = cfg.get("monthly_price", 15000)
+    return {
+        "total_users": len(subs),
+        "active_subs": active,
+        "expired_subs": expired,
+        "monthly_revenue": active * price
+    }
+
+@app.get("/admin/users")
+async def admin_users(password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    return load_subs()
+
+@app.get("/admin/payments")
+async def admin_payments(password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    return load_pending()
+
+@app.post("/admin/payments/approve")
+async def approve_payment(suffix: str, password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    pend = load_pending()
+    if suffix not in pend:
+        raise HTTPException(404, "Topilmadi")
+    p_data = pend.pop(suffix)
+    save_pending(pend)
+    uid = p_data["user_id"]
+    months = p_data["months"]
+    subs = load_subs()
+    user_sub = subs.get(uid, {})
+    now = datetime.now().timestamp()
+    current_exp = user_sub.get("expires_at", now)
+    if current_exp < now: current_exp = now
+    user_sub["expires_at"] = current_exp + (months * 30 * 24 * 3600)
+    user_sub["phone"] = p_data.get("phone", user_sub.get("phone", ""))
+    user_sub["name"] = p_data.get("name", user_sub.get("name", ""))
+    user_sub["username"] = p_data.get("username", user_sub.get("username", ""))
+    subs[uid] = user_sub
+    save_subs(subs)
+    return {"ok": True}
+
+@app.post("/admin/payments/reject")
+async def reject_payment(suffix: str, password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    pend = load_pending()
+    if suffix in pend:
+        pend.pop(suffix)
+        save_pending(pend)
+    return {"ok": True}
+
+@app.get("/admin/settings")
+async def get_admin_settings(password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    return cfg
+
+@app.post("/admin/settings")
+async def save_admin_settings(req: AdminSettings, password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    cfg["password"] = req.password
+    cfg["channel_id"] = req.channel_id
+    cfg["monthly_price"] = req.monthly_price
+    save_admin(cfg)
+    return {"ok": True}
+
+# ═══════════════════════════════════════
+# SUBSCRIPTION ENDPOINTS
+# ═══════════════════════════════════════
+import random
+
+@app.get("/sub/status/{uid}")
+async def sub_status(uid: str):
+    cfg = load_admin()
+    price = cfg.get("monthly_price", 15000)
+    if uid == "demo_user":
+        return {"active": True, "price": price}
+    subs = load_subs()
+    user_sub = subs.get(uid)
+    if not user_sub:
+        return {"active": False, "price": price, "expires_at": 0}
+    now = datetime.now().timestamp()
+    active = user_sub.get("expires_at", 0) > now
+    return {"active": active, "price": price, "expires_at": user_sub.get("expires_at", 0)}
+
+@app.post("/sub/request")
+async def sub_request(req: SubRequest):
+    cfg = load_admin()
+    base_price = cfg.get("monthly_price", 15000)
+    total = base_price * req.months
+    pend = load_pending()
+    # Noyob suffix yaratish (1-99)
+    used = set()
+    for v in pend.values():
+        diff = v.get("amount", 0) - (base_price * v.get("months", 1))
+        if 0 < diff < 100:
+            used.add(diff)
+    suffix = random.randint(1, 99)
+    while suffix in used:
+        suffix = random.randint(1, 99)
+    amount = total + suffix
+    suffix_key = str(suffix)
+    pend[suffix_key] = {
+        "user_id": req.user_id,
+        "months": req.months,
+        "amount": amount,
+        "phone": req.phone,
+        "name": req.name,
+        "username": req.username,
+        "created_at": datetime.now().isoformat()
+    }
+    save_pending(pend)
+    return {"ok": True, "amount": amount, "suffix": suffix}
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "clients": len(clients), "pending": len(pending)}
