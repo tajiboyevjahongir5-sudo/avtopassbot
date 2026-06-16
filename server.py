@@ -667,12 +667,11 @@ async def admin_stats(password: str = ""):
     now = datetime.now().timestamp()
     active = sum(1 for s in subs.values() if s.get("expires_at", 0) > now)
     expired = len(subs) - active
-    price = cfg.get("monthly_price", 15000)
     return {
         "total_users": len(subs),
         "active_subs": active,
         "expired_subs": expired,
-        "monthly_revenue": active * price
+        "monthly_revenue": cfg.get("total_revenue", 0)
     }
 
 @app.get("/admin/users")
@@ -712,6 +711,10 @@ async def approve_payment(suffix: str, password: str = ""):
     user_sub["username"] = p_data.get("username", user_sub.get("username", ""))
     subs[uid] = user_sub
     save_subs(subs)
+    
+    cfg["total_revenue"] = cfg.get("total_revenue", 0) + (months * cfg.get("monthly_price", 15000))
+    save_admin(cfg)
+    
     return {"ok": True}
 
 @app.post("/admin/payments/reject")
