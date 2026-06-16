@@ -2362,7 +2362,7 @@ function selFType(ft){
 }
 function addFilter(){
   activeFilters.push({type:selectedFilterType.val,icon:selectedFilterType.icon,label:selectedFilterType.label,value:'',enabled:true});
-  if(currentRuleIdx>=0){ rules[currentRuleIdx].filters=activeFilters; saveRules(); }
+  if(currentRuleIdx>=0){ syncFilters(); }
   renderFilters();
   const fi=document.getElementById('sv-filters');
   if(fi) fi.textContent=activeFilters.length;
@@ -2386,17 +2386,17 @@ function renderFilters(){
 }
 function toggleFilter(i){
   activeFilters[i].enabled=!activeFilters[i].enabled;
-  if(currentRuleIdx>=0){ rules[currentRuleIdx].filters=activeFilters; saveRules(); }
+  if(currentRuleIdx>=0){ syncFilters(); }
   renderFilters();
 }
 function updateFilterVal(i,v){ activeFilters[i].value=v; }
 function saveFilterVal(i){
-  if(currentRuleIdx>=0){ rules[currentRuleIdx].filters=activeFilters; saveRules(); }
+  if(currentRuleIdx>=0){ syncFilters(); }
   toast('<i class="fa-solid fa-check"></i> Saqlandi','ok');
 }
 function removeFilter(i){
   activeFilters.splice(i,1);
-  if(currentRuleIdx>=0){ rules[currentRuleIdx].filters=activeFilters; saveRules(); }
+  if(currentRuleIdx>=0){ syncFilters(); }
   renderFilters();
   const fi=document.getElementById('sv-filters');
   if(fi) fi.textContent=activeFilters.length;
