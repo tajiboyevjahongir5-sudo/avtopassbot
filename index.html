@@ -1467,10 +1467,11 @@ body{
       </div>
     </div>
     <div class="admin-panel-content" id="pnl-users">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; padding: 0 4px">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 12px; padding: 0 4px">
         <strong style="font-size:16px; font-weight:800; letter-spacing:-0.02em">Foydalanuvchilar</strong>
         <span style="color:var(--accent); font-weight:700; font-size:13px" id="admin-users-count">0 ta</span>
       </div>
+      <input type="text" id="admin-user-search" onkeyup="filterAdminUsers()" class="inp" placeholder="Ism, ID yoki username bo'yicha izlash..." style="margin-bottom:16px; font-size:14px">
       <div id="admin-users-list"></div>
     </div>
     <div class="admin-panel-content" id="pnl-payments">
@@ -1743,14 +1744,27 @@ async function loadAdminStats(){
   } catch(e){}
 }
 
+let adminAllUsers = [];
+
 async function loadAdminUsers(){
   try {
     const r = await fetch(`${API}/admin/users?password=${adminPass}`);
     const d = await r.json();
+    adminAllUsers = Object.entries(d).reverse();
+    renderAdminUsers(adminAllUsers);
+  } catch(e){}
+}
+
+function renderAdminUsers(usersArr) {
     const el = document.getElementById('admin-users-list');
     const now = Date.now() / 1000;
-    const usersArr = Object.entries(d);
     document.getElementById('admin-users-count').innerText = `${usersArr.length} ta`;
+    
+    if (usersArr.length === 0) {
+        el.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted)">Hech kim topilmadi</div>';
+        return;
+    }
+    
     el.innerHTML = usersArr.map(([uid, u]) => {
       const active = (u.expires_at || 0) > now;
       const statusBadge = active 
@@ -1787,11 +1801,47 @@ async function loadAdminUsers(){
               <i class="fa-solid fa-id-card" style="opacity:0.8; font-size:11px"></i> ID: ${uid}
             </div>
           </div>
-          ${statusBadge}
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px">
+            ${statusBadge}
+            <button onclick="openAddSubModal('${uid}', '${(u.name || 'Ismsiz').replace(/'/g, "\\'")}')" style="background:rgba(46,213,115,.15); color:var(--success); border:1px solid rgba(46,213,115,.3); border-radius:8px; padding:6px 10px; font-size:11px; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer"><i class="fa-solid fa-plus"></i> Obuna qo'shish</button>
+          </div>
         </div>
       </div>`;
     }).join('');
-  } catch(e){}
+}
+
+function filterAdminUsers() {
+    const q = document.getElementById('admin-user-search').value.toLowerCase();
+    if (!q) return renderAdminUsers(adminAllUsers);
+    const filtered = adminAllUsers.filter(([uid, u]) => {
+        const name = (u.name || '').toLowerCase();
+        const uname = (u.username || '').toLowerCase();
+        return name.includes(q) || uname.includes(q) || String(uid).includes(q);
+    });
+    renderAdminUsers(filtered);
+}
+
+function openAddSubModal(uid, name) {
+    document.getElementById('add-sub-uid').value = uid;
+    document.getElementById('add-sub-username').innerText = `Foydalanuvchi: ${name} (${uid})`;
+    document.getElementById('mod-add-sub').style.display = 'flex';
+}
+
+async function submitAddSub() {
+    const uid = document.getElementById('add-sub-uid').value;
+    const radios = document.getElementsByName('add_sub_months');
+    let months = 1;
+    for (let r of radios) { if (r.checked) months = parseInt(r.value); }
+    
+    try {
+        const res = await fetch(`${API}/admin/users/add_sub?uid=${uid}&months=${months}&password=${adminPass}`, {method:'POST'});
+        const data = await res.json();
+        if (data.ok) {
+            toast("Obuna qo'shildi!", "ok");
+            document.getElementById('mod-add-sub').style.display = 'none';
+            loadAdminUsers();
+        } else { toast("Xatolik", "err"); }
+    } catch(e) { toast("Xatolik", "err"); }
 }
 
 async function loadAdminPayments(){
@@ -2491,5 +2541,25 @@ loadDemoChats();
 loadHomeStatus();
 checkSubStatus();
 </script>
+<div class="modal" id="mod-add-sub" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(5px)">
+  <div style="background:var(--surface); border-radius:var(--r-lg); width:100%; max-width:320px; padding:24px; border:1px solid rgba(255,255,255,0.1); box-shadow:0 10px 40px rgba(0,0,0,0.5)">
+     <h3 style="margin:0 0 16px; font-size:18px; color:var(--text); font-weight:800">Obuna qo'shish</h3>
+     <p style="font-size:13px; color:var(--muted); margin-bottom:20px" id="add-sub-username"></p>
+     <input type="hidden" id="add-sub-uid">
+     
+     <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:24px" id="add-sub-radios">
+        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text); cursor:pointer"><input type="radio" name="add_sub_months" value="1" checked style="width:18px; height:18px; accent-color:var(--accent)"> 1 Oy uzaytirish</label>
+        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text); cursor:pointer"><input type="radio" name="add_sub_months" value="3" style="width:18px; height:18px; accent-color:var(--accent)"> 3 Oy uzaytirish</label>
+        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text); cursor:pointer"><input type="radio" name="add_sub_months" value="6" style="width:18px; height:18px; accent-color:var(--accent)"> 6 Oy uzaytirish</label>
+        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text); cursor:pointer"><input type="radio" name="add_sub_months" value="12" style="width:18px; height:18px; accent-color:var(--accent)"> 12 Oy uzaytirish</label>
+        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--success); font-weight:700; cursor:pointer"><input type="radio" name="add_sub_months" value="999" style="width:18px; height:18px; accent-color:var(--success)"> Muddatsiz (Umrbod)</label>
+     </div>
+     
+     <div style="display:flex; gap:12px">
+        <button class="btn" style="flex:1; background:var(--surface3); color:var(--text2)" onclick="document.getElementById('mod-add-sub').style.display='none'">Bekor qilish</button>
+        <button class="btn btn-p" style="flex:1" onclick="submitAddSub()">Saqlash</button>
+     </div>
+  </div>
+</div>
 </body>
 </html>
