@@ -701,6 +701,31 @@ async def admin_users(password: str = ""):
         raise HTTPException(403, "Ruxsat yo'q")
     return load_subs()
 
+@app.post("/admin/users/add_sub")
+async def admin_add_sub(uid: str, months: int, password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    subs = load_subs()
+    if uid not in subs:
+        subs[uid] = {}
+    
+    user_sub = subs[uid]
+    now = datetime.now().timestamp()
+    current_exp = user_sub.get("expires_at", now)
+    if current_exp < now:
+        current_exp = now
+        
+    if months >= 999:
+        user_sub["expires_at"] = now + (100 * 365 * 24 * 3600)
+    else:
+        user_sub["expires_at"] = current_exp + (months * 30 * 24 * 3600)
+        
+    user_sub["trial"] = False
+    subs[uid] = user_sub
+    save_subs(subs)
+    return {"ok": True}
+
 @app.get("/admin/payments")
 async def admin_payments(password: str = ""):
     cfg = load_admin()
