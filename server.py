@@ -61,7 +61,8 @@ async def start_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     subs = load_subs()
     uid_str = str(u.id)
     if uid_str not in subs:
-        subs[uid_str] = {}
+        now = datetime.now().timestamp()
+        subs[uid_str] = {"expires_at": now + (7 * 24 * 3600), "trial": True, "registered_at": now}
     subs[uid_str]["name"] = u.first_name
     if u.username:
         subs[uid_str]["username"] = u.username
@@ -491,7 +492,8 @@ async def verify_code(req: CodeReq):
         subs = load_subs()
         uid_str = str(req.user_id)
         if uid_str not in subs:
-            subs[uid_str] = {}
+            now = datetime.now().timestamp()
+            subs[uid_str] = {"expires_at": now + (7 * 24 * 3600), "trial": True, "registered_at": now}
         subs[uid_str]["phone"] = req.phone
         save_subs(subs)
         
