@@ -794,6 +794,15 @@ body{
       <div class="feat-chev"><i class="fa-solid fa-chevron-right"></i></div>
     </div>
 
+    <div class="feat-card" onclick="go('s-profile')">
+      <div class="feat-icon" style="background:rgba(155,89,182,.15);color:#9b59b6"><i class="fa-solid fa-user"></i></div>
+      <div class="feat-body">
+        <strong>Profil va Obuna</strong>
+        <span>Obuna holati va karta orqali to'lov</span>
+      </div>
+      <div class="feat-chev"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+
     <div class="feat-card" onclick="go('s-rules')">
       <div class="feat-icon green"><i class="fa-solid fa-list-check"></i></div>
       <div class="feat-body">
@@ -1600,8 +1609,19 @@ let subPrice = 15000;
 let selMonths = 1;
 let adminPass = '';
 
+async function loadBackendRules() {
+  if(UID === 'demo_user') return;
+  try {
+    const r = await fetch(`${API}/rules/${UID}`);
+    const d = await r.json();
+    rules = d.rules || [];
+    localStorage.setItem('fb_rules', JSON.stringify(rules));
+  } catch(e){}
+}
+
 async function checkSubStatus(){
   if(UID === 'demo_user') return;
+  await loadBackendRules();
   try {
     const r = await fetch(`${API}/sub/status/${UID}`);
     const d = await r.json();
@@ -1644,6 +1664,12 @@ async function requestSub(){
     const d = await r.json();
     if(d.ok) {
       document.getElementById('pay-amount-display').textContent = d.amount.toLocaleString('uz-UZ') + " so'm";
+      if(d.card_number) {
+        const cn = document.getElementById('pay-card-num');
+        const co = document.getElementById('pay-card-owner');
+        if(cn) cn.textContent = d.card_number;
+        if(co) co.textContent = d.card_owner || 'Admin';
+      }
       go('s-pay');
     } else {
       toast("Xatolik", "err");
@@ -1839,10 +1865,11 @@ async function requestProfileSub() {
     const d = await r.json();
     if(d.ok) {
       document.getElementById('pay-amount-display').textContent = d.amount.toLocaleString('uz-UZ') + " so'm";
-      const sd = window._subData;
-      if(sd && sd.card_number) {
-        document.getElementById('pay-card-num').textContent = sd.card_number;
-        document.getElementById('pay-card-owner').textContent = sd.card_owner || 'Admin';
+      if(d.card_number) {
+        const cn = document.getElementById('pay-card-num');
+        const co = document.getElementById('pay-card-owner');
+        if(cn) cn.textContent = d.card_number;
+        if(co) co.textContent = d.card_owner || 'Admin';
       }
       go('s-pay');
     } else { toast('Xatolik','err'); }
@@ -2215,9 +2242,21 @@ function renderRules(){
   el.innerHTML=html;
 }
 function openRule(i){ currentRuleIdx=i; ruleSettings=rules[i].settings||{}; activeFilters=[...(rules[i].filters||[])]; go('s-rsettings'); }
-function toggleRule(i){ rules[i].active=!rules[i].active; saveRules(); renderRules(); toast(rules[i].active?'<i class="fa-solid fa-play"></i> Yoqildi':'<i class="fa-solid fa-pause"></i> To\'xtatildi','ok'); }
-function delRule(i){ if(!confirm('Qoidani o\'chirish?'))return; rules.splice(i,1); saveRules(); renderRules(); toast('<i class="fa-solid fa-trash"></i> O\'chirildi','ok'); }
-function deleteCurrentRule(){ if(currentRuleIdx>=0){ rules.splice(currentRuleIdx,1); saveRules(); toast('<i class="fa-solid fa-trash"></i> O\'chirildi','ok'); go('s-rules'); } }
+async function toggleRule(i){ 
+  rules[i].active=!rules[i].active; saveRules(); renderRules(); 
+  toast(rules[i].active?'<i class="fa-solid fa-play"></i> Yoqildi':'<i class="fa-solid fa-pause"></i> To\'xtatildi','ok');
+  try { await fetch(`${API}/rules/toggle`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: UID, rule_index: i}) }); } catch(e){}
+}
+async function delRule(i){ 
+  if(!confirm('Qoidani o\'chirish?'))return; rules.splice(i,1); saveRules(); renderRules(); toast('<i class="fa-solid fa-trash"></i> O\'chirildi','ok');
+  try { await fetch(`${API}/rules/delete`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: UID, rule_index: i}) }); } catch(e){}
+}
+async function deleteCurrentRule(){ 
+  if(currentRuleIdx>=0){ 
+    const idx = currentRuleIdx; rules.splice(idx,1); saveRules(); toast('<i class="fa-solid fa-trash"></i> O\'chirildi','ok'); go('s-rules');
+    try { await fetch(`${API}/rules/delete`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: UID, rule_index: idx}) }); } catch(e){}
+  }
+}
 
 // ═══════════════════════════════
 // RULE SETTINGS
@@ -2249,11 +2288,14 @@ function toggleSec(id){
   body.classList.toggle('open');
   arr.classList.toggle('open');
 }
-function toggleBool(key){
+async function toggleBool(key){
   ruleSettings[key]=!ruleSettings[key];
   const el=document.getElementById('tgl-'+key);
   if(el) el.className='toggle'+(ruleSettings[key]?' on':'');
-  if(currentRuleIdx>=0){ rules[currentRuleIdx].settings=ruleSettings; saveRules(); }
+  if(currentRuleIdx>=0){ 
+    rules[currentRuleIdx].settings=ruleSettings; saveRules();
+    try { await fetch(`${API}/rules/update_setting`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: UID, rule_index: currentRuleIdx, key: key, value: ruleSettings[key]}) }); } catch(e){}
+  }
 }
 let editKey='';
 function editSetting(key,label){
@@ -2262,12 +2304,15 @@ function editSetting(key,label){
   document.getElementById('edit-inp').value=ruleSettings[key]||document.getElementById('sv-'+key)?.textContent||'';
   openModal('m-edit');
 }
-function saveEdit(){
+async function saveEdit(){
   const val=document.getElementById('edit-inp').value;
   ruleSettings[editKey]=val;
   const sv=document.getElementById('sv-'+editKey);
   if(sv) sv.textContent=val;
-  if(currentRuleIdx>=0){ rules[currentRuleIdx].settings=ruleSettings; saveRules(); }
+  if(currentRuleIdx>=0){ 
+    rules[currentRuleIdx].settings=ruleSettings; saveRules();
+    try { await fetch(`${API}/rules/update_setting`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: UID, rule_index: currentRuleIdx, key: editKey, value: val}) }); } catch(e){}
+  }
   closeModal('m-edit'); toast('<i class="fa-solid fa-check"></i> Saqlandi','ok');
 }
 function filterSettings(){
@@ -2358,7 +2403,12 @@ function removeFilter(i){
 function enableAllFilters(){ activeFilters.forEach(f=>f.enabled=true); syncFilters(); renderFilters(); toast('Barchasi yoqildi','ok'); }
 function disableAllFilters(){ activeFilters.forEach(f=>f.enabled=false); syncFilters(); renderFilters(); toast("Barchasi o'chirildi",'ok'); }
 function deleteAllFilters(){ if(!confirm("Barcha filterni o'chirish?"))return; activeFilters=[]; syncFilters(); renderFilters(); toast("O'chirildi",'ok'); }
-function syncFilters(){ if(currentRuleIdx>=0){ rules[currentRuleIdx].filters=activeFilters; saveRules(); } }
+async function syncFilters(){ 
+  if(currentRuleIdx>=0){ 
+    rules[currentRuleIdx].filters=activeFilters; saveRules();
+    try { await fetch(`${API}/rules/update_filters`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: UID, rule_index: currentRuleIdx, filters: activeFilters}) }); } catch(e){}
+  } 
+}
 function toggleFilterInfo(){
   const el=document.getElementById('filter-info');
   el.style.display=el.style.display==='none'?'block':'none';
