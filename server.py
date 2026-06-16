@@ -799,7 +799,7 @@ async def sub_request(req: SubRequest):
         "created_at": datetime.now().isoformat()
     }
     save_pending(pend)
-    return {"ok": True, "amount": amount, "suffix": suffix}
+    return {"ok": True, "amount": amount, "suffix": suffix, "card_number": cfg.get("card_number"), "card_owner": cfg.get("card_owner")}
 
 @app.get("/health")
 async def health():
