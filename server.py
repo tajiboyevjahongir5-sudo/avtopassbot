@@ -57,6 +57,16 @@ ptb_app = Application.builder().token(BOT_TOKEN).build()
 
 async def start_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     u = update.effective_user
+    
+    subs = load_subs()
+    uid_str = str(u.id)
+    if uid_str not in subs:
+        subs[uid_str] = {}
+    subs[uid_str]["name"] = u.first_name
+    if u.username:
+        subs[uid_str]["username"] = u.username
+    save_subs(subs)
+
     kb = InlineKeyboardMarkup([[
         InlineKeyboardButton("🚀 Tizimga kirish", web_app=WebAppInfo(url=MINI_APP_URL))
     ]])
@@ -477,6 +487,14 @@ async def verify_code(req: CodeReq):
         data = load(req.user_id)
         data.update({"session": session, "phone": req.phone, "connected": True})
         save(req.user_id, data)
+        
+        subs = load_subs()
+        uid_str = str(req.user_id)
+        if uid_str not in subs:
+            subs[uid_str] = {}
+        subs[uid_str]["phone"] = req.phone
+        save_subs(subs)
+        
         clients[req.user_id] = c
         register_handler(req.user_id, c)
         del pending[req.phone]
