@@ -1773,7 +1773,7 @@ async function loadAdminUsers(){
             <strong style="font-size:15px; font-weight:700; display:block; color:var(--text); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${u.name || 'Ismsiz foydalanuvchi'}</strong>
             <span style="font-size:13px; color:var(--accent); font-weight:500">@${u.username || uid}</span>
           </div>
-          <button onclick="window.Telegram.WebApp.openTelegramLink('https://t.me/${u.username || ''}')" style="width:38px; height:38px; border-radius:10px; background:var(--surface2); color:var(--accent); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; flex-shrink:0; transition:all .2s">
+          <button onclick="if('${u.username || ''}') { window.Telegram.WebApp.openTelegramLink('https://t.me/${u.username}'); } else { window.location.href = 'tg://user?id=${uid}'; }" style="width:38px; height:38px; border-radius:10px; background:var(--surface2); color:var(--accent); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; flex-shrink:0; transition:all .2s">
             <i class="fa-brands fa-telegram"></i>
           </button>
         </div>
