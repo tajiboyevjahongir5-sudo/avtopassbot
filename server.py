@@ -12,6 +12,7 @@ from typing import Optional, Dict, List, Any
 from pathlib import Path
 from datetime import datetime
 from contextlib import asynccontextmanager
+import pymongo
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,8 +37,8 @@ DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
 DATA_DIR.mkdir(exist_ok=True)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8881052991:AAFop1tZG0q4s8vnIkK76GSHCwE9X5qp9aM")
-MINI_APP_URL = os.getenv("MINI_APP_URL", "https://jahongirsteam1-ux.github.io/avtopass_bot/")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://avtopassbot-production.up.railway.app")
+MINI_APP_URL = os.getenv("MINI_APP_URL", "https://jahongirsteam1-ux.github.io/tezlashtiramiz/")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://forwardbot-production-1f08.up.railway.app")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("forwardbot")
@@ -57,6 +58,17 @@ ptb_app = Application.builder().token(BOT_TOKEN).build()
 
 async def start_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     u = update.effective_user
+    
+    subs = load_subs()
+    uid_str = str(u.id)
+    if uid_str not in subs:
+        now = datetime.now().timestamp()
+        subs[uid_str] = {"expires_at": now + (7 * 24 * 3600), "trial": True, "registered_at": now}
+    subs[uid_str]["name"] = u.first_name
+    if u.username:
+        subs[uid_str]["username"] = u.username
+    save_subs(subs)
+
     kb = InlineKeyboardMarkup([[
         InlineKeyboardButton("🚀 Tizimga kirish", web_app=WebAppInfo(url=MINI_APP_URL))
     ]])
@@ -120,57 +132,66 @@ ptb_app.add_handler(MessageHandler(filters.ChatType.CHANNEL, channel_post_handle
 
 
 # ═══════════════════════════════════════
-# DATA
+# DATA (MongoDB)
 # ═══════════════════════════════════════
-def ufile(uid): return DATA_DIR / f"{uid}.json"
-
+MONGO_URL = "mongodb+srv://Jahongir:Jahongir2006@cluster0.t4fbvgd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+mongo_client = pymongo.MongoClient(MONGO_URL)
+db = mongo_client["autopass_db"]
 
 def load_admin():
-    f = DATA_DIR / "admin.json"
-    if f.exists():
-        try: return json.loads(f.read_text("utf-8"))
-        except: pass
-    return {"password": "admin", "channel_id": "", "monthly_price": 15000}
+    doc = db.admin.find_one({"_id": "config"})
+    if doc:
+        doc.pop("_id", None)
+        return doc
+    return {"password": "admin", "channel_id": "", "monthly_price": 15000, "card_number": "8600 0000 0000 0000", "card_owner": "Admin"}
 
 def save_admin(data):
-    (DATA_DIR / "admin.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
+    db.admin.update_one({"_id": "config"}, {"$set": data}, upsert=True)
 
 def load_subs():
-    f = DATA_DIR / "subscriptions.json"
-    if f.exists():
-        try: return json.loads(f.read_text("utf-8"))
-        except: pass
+    doc = db.state.find_one({"_id": "subscriptions"})
+    if doc:
+        return doc.get("data", {})
     return {}
 
 def save_subs(data):
-    (DATA_DIR / "subscriptions.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
+    db.state.update_one({"_id": "subscriptions"}, {"$set": {"data": data}}, upsert=True)
 
 def load_pending():
-    f = DATA_DIR / "pending_payments.json"
-    if f.exists():
-        try: return json.loads(f.read_text("utf-8"))
-        except: pass
+    doc = db.state.find_one({"_id": "pending_payments"})
+    if doc:
+        return doc.get("data", {})
     return {}
 
 def save_pending(data):
-    (DATA_DIR / "pending_payments.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
+    db.state.update_one({"_id": "pending_payments"}, {"$set": {"data": data}}, upsert=True)
 
 def check_sub(uid: str) -> bool:
     if uid == "demo_user": return True
     subs = load_subs()
     user_sub = subs.get(uid)
-    if not user_sub: return False
+    if not user_sub:
+        now = datetime.now().timestamp()
+        subs[uid] = {
+            "expires_at": now + (7 * 24 * 3600),
+            "trial": True,
+            "registered_at": now
+        }
+        save_subs(subs)
+        return True
     return datetime.now().timestamp() < user_sub.get("expires_at", 0)
 
 def load(uid):
-    f = ufile(uid)
-    if f.exists():
-        try: return json.loads(f.read_text("utf-8"))
-        except: pass
+    uid = str(uid)
+    doc = db.users.find_one({"_id": uid})
+    if doc:
+        doc.pop("_id", None)
+        return doc
     return {"session": None, "phone": None, "connected": False, "rules": []}
 
 def save(uid, data):
-    ufile(uid).write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
+    uid = str(uid)
+    db.users.update_one({"_id": uid}, {"$set": data}, upsert=True)
 
 # ═══════════════════════════════════════
 # MODELS
@@ -193,6 +214,8 @@ class AdminSettings(BaseModel):
     password: str
     channel_id: str
     monthly_price: int
+    card_number: str = "8600 0000 0000 0000"
+    card_owner: str = "Admin"
 
 class SubRequest(BaseModel):
     user_id: str
@@ -466,6 +489,15 @@ async def verify_code(req: CodeReq):
         data = load(req.user_id)
         data.update({"session": session, "phone": req.phone, "connected": True})
         save(req.user_id, data)
+        
+        subs = load_subs()
+        uid_str = str(req.user_id)
+        if uid_str not in subs:
+            now = datetime.now().timestamp()
+            subs[uid_str] = {"expires_at": now + (7 * 24 * 3600), "trial": True, "registered_at": now}
+        subs[uid_str]["phone"] = req.phone
+        save_subs(subs)
+        
         clients[req.user_id] = c
         register_handler(req.user_id, c)
         del pending[req.phone]
@@ -636,6 +668,187 @@ async def get_stats(uid: str):
         "active": sum(1 for r in rules if r.get("active", True)),
         "forwarded": sum(r.get("count", 0) for r in rules),
     }
+
+# ═══════════════════════════════════════
+# ADMIN ENDPOINTS
+# ═══════════════════════════════════════
+@app.post("/admin/login")
+async def admin_login(req: AdminLogin):
+    cfg = load_admin()
+    if req.password == cfg.get("password", "admin"):
+        return {"ok": True}
+    raise HTTPException(403, "Parol noto'g'ri")
+
+@app.get("/admin/stats")
+async def admin_stats(password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    subs = load_subs()
+    now = datetime.now().timestamp()
+    active = sum(1 for s in subs.values() if s.get("expires_at", 0) > now)
+    expired = len(subs) - active
+    return {
+        "total_users": len(subs),
+        "active_subs": active,
+        "expired_subs": expired,
+        "monthly_revenue": cfg.get("total_revenue", 0)
+    }
+
+@app.get("/admin/users")
+async def admin_users(password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    return load_subs()
+
+@app.post("/admin/users/add_sub")
+async def admin_add_sub(uid: str, months: int, password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    subs = load_subs()
+    if uid not in subs:
+        subs[uid] = {}
+    
+    user_sub = subs[uid]
+    now = datetime.now().timestamp()
+    current_exp = user_sub.get("expires_at", now)
+    if current_exp < now:
+        current_exp = now
+        
+    if months >= 999:
+        user_sub["expires_at"] = now + (100 * 365 * 24 * 3600)
+    else:
+        user_sub["expires_at"] = current_exp + (months * 30 * 24 * 3600)
+        
+    user_sub["trial"] = False
+    subs[uid] = user_sub
+    save_subs(subs)
+    return {"ok": True}
+
+@app.get("/admin/payments")
+async def admin_payments(password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    return load_pending()
+
+@app.post("/admin/payments/approve")
+async def approve_payment(suffix: str, password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    pend = load_pending()
+    if suffix not in pend:
+        raise HTTPException(404, "Topilmadi")
+    p_data = pend.pop(suffix)
+    save_pending(pend)
+    uid = p_data["user_id"]
+    months = p_data["months"]
+    subs = load_subs()
+    user_sub = subs.get(uid, {})
+    now = datetime.now().timestamp()
+    current_exp = user_sub.get("expires_at", now)
+    if current_exp < now: current_exp = now
+    user_sub["expires_at"] = current_exp + (months * 30 * 24 * 3600)
+    user_sub["phone"] = p_data.get("phone", user_sub.get("phone", ""))
+    user_sub["name"] = p_data.get("name", user_sub.get("name", ""))
+    user_sub["username"] = p_data.get("username", user_sub.get("username", ""))
+    subs[uid] = user_sub
+    save_subs(subs)
+    
+    cfg["total_revenue"] = cfg.get("total_revenue", 0) + (months * cfg.get("monthly_price", 15000))
+    save_admin(cfg)
+    
+    return {"ok": True}
+
+@app.post("/admin/payments/reject")
+async def reject_payment(suffix: str, password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    pend = load_pending()
+    if suffix in pend:
+        pend.pop(suffix)
+        save_pending(pend)
+    return {"ok": True}
+
+@app.get("/admin/settings")
+async def get_admin_settings(password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    return cfg
+
+@app.post("/admin/settings")
+async def save_admin_settings(req: AdminSettings, password: str = ""):
+    cfg = load_admin()
+    if password != cfg.get("password", "admin"):
+        raise HTTPException(403, "Ruxsat yo'q")
+    cfg["password"] = req.password
+    cfg["channel_id"] = req.channel_id
+    cfg["monthly_price"] = req.monthly_price
+    cfg["card_number"] = req.card_number
+    cfg["card_owner"] = req.card_owner
+    save_admin(cfg)
+    return {"ok": True}
+
+# ═══════════════════════════════════════
+# SUBSCRIPTION ENDPOINTS
+# ═══════════════════════════════════════
+import random
+
+@app.get("/sub/status/{uid}")
+async def sub_status(uid: str):
+    cfg = load_admin()
+    price = cfg.get("monthly_price", 15000)
+    if uid == "demo_user":
+        return {"active": True, "price": price}
+    card_number = cfg.get("card_number", "8600 0000 0000 0000")
+    card_owner = cfg.get("card_owner", "Admin")
+    subs = load_subs()
+    user_sub = subs.get(uid)
+    if not user_sub:
+        # Yangi foydalanuvchi — avtomatik 7 kunlik trial
+        now = datetime.now().timestamp()
+        user_sub = {"expires_at": now + (7 * 24 * 3600), "trial": True, "registered_at": now}
+        subs[uid] = user_sub
+        save_subs(subs)
+        return {"active": True, "price": price, "expires_at": user_sub["expires_at"], "trial": True, "card_number": card_number, "card_owner": card_owner}
+    now = datetime.now().timestamp()
+    active = user_sub.get("expires_at", 0) > now
+    trial = user_sub.get("trial", False) and active
+    return {"active": active, "price": price, "expires_at": user_sub.get("expires_at", 0), "trial": trial, "card_number": card_number, "card_owner": card_owner}
+
+@app.post("/sub/request")
+async def sub_request(req: SubRequest):
+    cfg = load_admin()
+    base_price = cfg.get("monthly_price", 15000)
+    total = base_price * req.months
+    pend = load_pending()
+    # Noyob suffix yaratish (1-99)
+    used = set()
+    for v in pend.values():
+        diff = v.get("amount", 0) - (base_price * v.get("months", 1))
+        if 0 < diff < 100:
+            used.add(diff)
+    suffix = random.randint(1, 99)
+    while suffix in used:
+        suffix = random.randint(1, 99)
+    amount = total + suffix
+    suffix_key = str(suffix)
+    pend[suffix_key] = {
+        "user_id": req.user_id,
+        "months": req.months,
+        "amount": amount,
+        "phone": req.phone,
+        "name": req.name,
+        "username": req.username,
+        "created_at": datetime.now().isoformat()
+    }
+    save_pending(pend)
+    return {"ok": True, "amount": amount, "suffix": suffix, "card_number": cfg.get("card_number"), "card_owner": cfg.get("card_owner")}
 
 @app.get("/health")
 async def health():
