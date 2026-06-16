@@ -113,15 +113,22 @@ body{
 
 /* ─── ADMIN & SUB STYLES ────── */
 .admin-tab-bar {
-  display: flex; gap: 8px; overflow-x: auto; padding: 14px 16px; border-bottom: 1px solid var(--border);
+  display: flex; gap: 12px; overflow-x: auto; padding: 20px 16px; border-bottom: 1px solid var(--border);
   scrollbar-width: none;
 }
 .admin-tab-bar::-webkit-scrollbar { display: none; }
 .admin-tab {
-  padding: 8px 14px; border-radius: var(--r-pill); font-size: 13px; font-weight: 600; color: var(--muted);
-  background: var(--surface2); cursor: pointer; white-space: nowrap; transition: all .2s; border: 1px solid transparent;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  width: 78px; height: 78px; border-radius: var(--r-lg);
+  background: transparent; border: 1.5px solid transparent; color: var(--muted);
+  font-size: 10px; font-weight: 700; cursor: pointer; transition: all .2s; flex-shrink: 0;
 }
-.admin-tab.act { background: var(--accent-dim); color: var(--accent); border-color: rgba(91,143,255,.2); }
+.admin-tab.act { background: var(--surface2); border-color: rgba(255,255,255,0.05); color: var(--text); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.admin-tab .icon-box {
+  width: 32px; height: 32px; border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center; font-size: 16px; transition: transform .2s;
+}
+.admin-tab.act .icon-box { transform: scale(1.15); }
 .admin-panel-content { display: none; padding: 14px 16px; }
 .admin-panel-content.act { display: block; }
 .stat-box {
@@ -1433,10 +1440,22 @@ body{
     <div class="hdr-title">Admin Panel</div>
   </div>
   <div class="admin-tab-bar">
-    <div class="admin-tab act" onclick="switchAdminTab('stats')" id="tab-stats">📊 Statistika</div>
-    <div class="admin-tab" onclick="switchAdminTab('users')" id="tab-users">👥 Foydalanuvchilar</div>
-    <div class="admin-tab" onclick="switchAdminTab('payments')" id="tab-payments">✅ To'lovlar</div>
-    <div class="admin-tab" onclick="switchAdminTab('settings')" id="tab-settings">⚙️ Sozlamalar</div>
+    <div class="admin-tab act" onclick="switchAdminTab('stats')" id="tab-stats">
+      <div class="icon-box" style="color:var(--accent); background:var(--accent-dim)"><i class="fa-solid fa-chart-simple"></i></div>
+      <span>Statistika</span>
+    </div>
+    <div class="admin-tab" onclick="switchAdminTab('users')" id="tab-users">
+      <div class="icon-box" style="color:var(--success); background:var(--success-dim)"><i class="fa-solid fa-users"></i></div>
+      <span>Foydalanuvchi</span>
+    </div>
+    <div class="admin-tab" onclick="switchAdminTab('payments')" id="tab-payments">
+      <div class="icon-box" style="color:var(--warn); background:var(--warn-dim)"><i class="fa-solid fa-check"></i></div>
+      <span>To'lovlar</span>
+    </div>
+    <div class="admin-tab" onclick="switchAdminTab('settings')" id="tab-settings">
+      <div class="icon-box" style="color:#b464ff; background:rgba(180,100,255,.15)"><i class="fa-solid fa-gear"></i></div>
+      <span>Sozlamalar</span>
+    </div>
   </div>
   <div class="content">
     <div class="admin-panel-content act" id="pnl-stats">
@@ -1448,6 +1467,10 @@ body{
       </div>
     </div>
     <div class="admin-panel-content" id="pnl-users">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; padding: 0 4px">
+        <strong style="font-size:16px; font-weight:800; letter-spacing:-0.02em">Foydalanuvchilar</strong>
+        <span style="color:var(--accent); font-weight:700; font-size:13px" id="admin-users-count">0 ta</span>
+      </div>
       <div id="admin-users-list"></div>
     </div>
     <div class="admin-panel-content" id="pnl-payments">
@@ -1726,15 +1749,46 @@ async function loadAdminUsers(){
     const d = await r.json();
     const el = document.getElementById('admin-users-list');
     const now = Date.now() / 1000;
-    el.innerHTML = Object.entries(d).map(([uid, u]) => {
+    const usersArr = Object.entries(d);
+    document.getElementById('admin-users-count').innerText = `${usersArr.length} ta`;
+    el.innerHTML = usersArr.map(([uid, u]) => {
       const active = (u.expires_at || 0) > now;
-      const statusStr = active ? '<span style="color:var(--success)">Aktiv</span>' : '<span style="color:var(--danger)">Muddati tugagan</span>';
+      const statusBadge = active 
+        ? `<div style="background:var(--success-dim); border:1px solid rgba(46,213,115,.2); color:var(--success); font-size:11px; padding:5px 12px; border-radius:var(--r-pill); font-weight:700">Aktiv obuna</div>`
+        : `<div style="background:var(--surface3); border:1px solid var(--border); color:var(--text2); font-size:11px; padding:5px 12px; border-radius:var(--r-pill); font-weight:700">Obuna yo'q</div>`;
+      
+      const avColor = active ? 'var(--accent)' : 'var(--text2)';
+      const avInitial = (u.name || 'U').charAt(0).toUpperCase();
+      const phoneText = u.phone ? u.phone : 'Raqam kiritilmagan';
+      const phoneColor = u.phone ? 'var(--text2)' : 'var(--danger)';
+      const phoneIcon = u.phone ? 'fa-phone' : 'fa-phone-slash';
+      
       return `
-      <div class="user-row">
-        <strong>${u.name || 'Ismsiz'} (@${u.username || ''})</strong>
-        <span>ID: ${uid}</span>
-        <span>Tel: ${u.phone || 'yoq'}</span>
-        <span>Status: ${statusStr}</span>
+      <div class="user-row" style="background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px; margin-bottom:12px; display:flex; flex-direction:column; gap:14px; box-shadow:0 4px 16px rgba(0,0,0,.2)">
+        <div style="display:flex; align-items:center; gap:12px">
+          <div style="width:48px; height:48px; border-radius:14px; background:var(--surface2); color:${avColor}; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; flex-shrink:0; border:1px solid var(--border)">
+            ${avInitial}
+          </div>
+          <div style="flex:1; min-width:0">
+            <strong style="font-size:15px; font-weight:700; display:block; color:var(--text); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${u.name || 'Ismsiz foydalanuvchi'}</strong>
+            <span style="font-size:13px; color:var(--accent); font-weight:500">@${u.username || uid}</span>
+          </div>
+          <button onclick="window.Telegram.WebApp.openTelegramLink('https://t.me/${u.username || ''}')" style="width:38px; height:38px; border-radius:10px; background:var(--surface2); color:var(--accent); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; flex-shrink:0; transition:all .2s">
+            <i class="fa-brands fa-telegram"></i>
+          </button>
+        </div>
+        <div style="height:1px; background:var(--border); margin:0 -16px"></div>
+        <div style="display:flex; align-items:center; justify-content:space-between">
+          <div style="display:flex; flex-direction:column; gap:6px">
+            <div style="font-size:12px; color:${phoneColor}; display:flex; align-items:center; gap:6px; font-weight:500">
+              <i class="fa-solid ${phoneIcon}" style="opacity:0.8; font-size:11px"></i> ${phoneText}
+            </div>
+            <div style="font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; font-weight:500">
+              <i class="fa-solid fa-id-card" style="opacity:0.8; font-size:11px"></i> ID: ${uid}
+            </div>
+          </div>
+          ${statusBadge}
+        </div>
       </div>`;
     }).join('');
   } catch(e){}
