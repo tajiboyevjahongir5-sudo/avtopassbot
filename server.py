@@ -35,9 +35,10 @@ API_ID   = int(os.getenv("API_ID", "12345678"))
 API_HASH = os.getenv("API_HASH", "your_api_hash")
 DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
 DATA_DIR.mkdir(exist_ok=True)
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8603403010:AAFjbwFfZrtuVvhGMCSCw8-cY_ezUCTu6tE")
-MINI_APP_URL = os.getenv("MINI_APP_URL", "https://jahongirsteam1-ux.github.io/tezlashtiramiz/")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://forwardbot-production-1f08.up.railway.app")
+
+BOT_TOKEN = "8603403010:AAFjbwFfZrtuVvhGMCSCw8-cY_ezUCTu6tE"
+MINI_APP_URL = "https://jahongirsteam1-ux.github.io/tezlashtiramiz/"
+WEBHOOK_URL = "https://forwardbot-production-1f08.up.railway.app"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("forwardbot")
@@ -134,7 +135,13 @@ ptb_app.add_handler(MessageHandler(filters.ChatType.CHANNEL, channel_post_handle
 # DATA (MongoDB)
 # ═══════════════════════════════════════
 MONGO_URL = "mongodb+srv://Jahongir:Jahongir2006@cluster0.t4fbvgd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-mongo_client = pymongo.MongoClient(MONGO_URL)
+mongo_client = pymongo.MongoClient(
+    MONGO_URL,
+    serverSelectionTimeoutMS=5000,
+    connectTimeoutMS=5000,
+    socketTimeoutMS=5000,
+    tlsAllowInvalidCertificates=True
+)
 db = mongo_client["autopass_db"]
 
 def load_admin():
@@ -330,6 +337,14 @@ def register_handler(uid: str, client: TelegramClient):
             settings = rule.get("settings", {})
 
             try:
+                # Timer (Kechikish)
+                try:
+                    delay_sec = int(settings.get("receipt_delays", 0))
+                    if delay_sec > 0:
+                        await asyncio.sleep(delay_sec)
+                except Exception:
+                    pass
+
                 # Header / Footer
                 header = settings.get("header", "").strip()
                 footer = settings.get("footer", "").strip()
