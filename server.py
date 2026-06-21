@@ -331,6 +331,14 @@ def register_handler(uid: str, client: TelegramClient):
             settings = rule.get("settings", {})
 
             try:
+                # Timer (Kechikish)
+                try:
+                    delay_sec = int(settings.get("receipt_delays", 0))
+                    if delay_sec > 0:
+                        await asyncio.sleep(delay_sec)
+                except Exception:
+                    pass
+
                 # Header / Footer
                 header = settings.get("header", "").strip()
                 footer = settings.get("footer", "").strip()
