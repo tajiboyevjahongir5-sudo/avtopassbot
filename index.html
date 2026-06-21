@@ -852,7 +852,7 @@ body{
         <i class="fa-solid fa-arrow-right"></i> Kod olish
       </button>
       <div class="info-links" style="margin-top:20px">
-        <div class="ilink" onclick="toast('Guruh xavolasi tez orada qo\'shiladi!', 'ok')">
+        <div class="ilink" onclick="if(window.COMMUNITY_LINK) { window.Telegram.WebApp.openTelegramLink(window.COMMUNITY_LINK); } else { toast('Guruh havolasi hozircha kiritilmagan!', 'err'); }">
           <div class="ilink-ic" style="background:var(--accent-dim)"><i class="fa-brands fa-telegram" style="color:var(--accent)"></i></div>
           <div class="ilink-text"><strong>Telegram Community</strong><span>8000 dan ortiq a'zo</span></div>
           <span class="ilink-chev"><i class="fa-solid fa-chevron-right"></i></span>
@@ -1027,8 +1027,8 @@ body{
           <span class="setting-key">Forwarding mode</span>
           <span class="setting-val" id="sv-mode">new</span>
         </div>
-        <div class="setting-row" onclick="editSetting('receipt_delays','Receipt delays')">
-          <span class="setting-key">Receipt delays</span>
+        <div class="setting-row" onclick="editSetting('receipt_delays','Kechikish vaqti (sekundlarda, masalan: 5 yoki 10)')">
+          <span class="setting-key">Xabarni kechiktirib yuborish (Timer)</span>
           <span class="setting-val" id="sv-receipt_delays">0</span>
         </div>
         <div class="setting-row" onclick="editSetting('sync_edits','Sync edits')">
@@ -1303,22 +1303,6 @@ body{
   <button class="fab" onclick="startFw()"><i class="fa-solid fa-plus"></i></button>
 </div>
 
-<!-- BUNDLE MODAL -->
-<div class="modal-bg" id="m-bundle">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div style="float:right;cursor:pointer;color:var(--muted);width:28px;height:28px;background:var(--surface2);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:12px" onclick="closeModal('m-bundle')"><i class="fa-solid fa-xmark"></i></div>
-    <div class="modal-title"><i class="fa-solid fa-tag" style="color:var(--accent);margin-right:8px"></i>Tarif tanlang</div>
-    <div class="modal-sub">Turli tariflar turli manba turlari bilan ishlash imkonini beradi.<br><br><b style="color:var(--text)">Expert</b> — istalgan manbalar, tezkor yetkazish.<br><b style="color:var(--text)">Express</b> — faqat ochiq manbalarda yangi xabarlar.</div>
-    <button class="btn btn-p" onclick="doExpert()" style="margin-bottom:10px">
-      <i class="fa-solid fa-crown"></i> Expert demosini olish
-    </button>
-    <button class="btn btn-o" onclick="doExpress()">
-      <i class="fa-solid fa-bolt"></i> Express demosini olish
-    </button>
-  </div>
-</div>
-
 <!-- EDIT SETTING MODAL -->
 <div class="modal-bg" id="m-edit">
   <div class="modal">
@@ -1490,6 +1474,8 @@ body{
           <input type="text" class="inp" id="adm-set-card" placeholder="8600 0000 0000 0000">
           <label style="font-size:12px; color:var(--muted); margin:12px 0 6px; display:block">Karta egasi</label>
           <input type="text" class="inp" id="adm-set-card-owner" placeholder="Admin">
+          <label style="font-size:12px; color:var(--muted); margin:12px 0 6px; display:block">Telegram Community havolasi</label>
+          <input type="text" class="inp" id="adm-set-community" placeholder="https://t.me/...">
           <button class="btn btn-p" style="margin-top:16px" onclick="saveAdminSettings()">Saqlash</button>
         </div>
       </div>
@@ -1777,6 +1763,14 @@ function renderAdminUsers(usersArr) {
       const phoneColor = u.phone ? 'var(--text2)' : 'var(--danger)';
       const phoneIcon = u.phone ? 'fa-phone' : 'fa-phone-slash';
       
+      let expText = "";
+      if (u.expires_at) {
+          const d = new Date(u.expires_at * 1000);
+          const dStr = ("0" + d.getDate()).slice(-2) + "." + ("0" + (d.getMonth() + 1)).slice(-2) + "." + d.getFullYear();
+          const tStr = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
+          expText = `<div style="font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px"><i class="fa-regular fa-clock"></i> ${dStr} ${tStr} gacha</div>`;
+      }
+      
       return `
       <div class="user-row" style="background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px; margin-bottom:12px; display:flex; flex-direction:column; gap:14px; box-shadow:0 4px 16px rgba(0,0,0,.2)">
         <div style="display:flex; align-items:center; gap:12px">
@@ -1800,6 +1794,7 @@ function renderAdminUsers(usersArr) {
             <div style="font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; font-weight:500">
               <i class="fa-solid fa-id-card" style="opacity:0.8; font-size:11px"></i> ID: ${uid}
             </div>
+            ${expText}
           </div>
           <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px">
             ${statusBadge}
@@ -1822,9 +1817,13 @@ function filterAdminUsers() {
 }
 
 function openAddSubModal(uid, name) {
-    document.getElementById('add-sub-uid').value = uid;
-    document.getElementById('add-sub-username').innerText = `Foydalanuvchi: ${name} (${uid})`;
-    document.getElementById('mod-add-sub').style.display = 'flex';
+    try {
+        document.getElementById('add-sub-uid').value = uid;
+        document.getElementById('add-sub-username').innerText = `Foydalanuvchi: ${name} (${uid})`;
+        document.getElementById('mod-add-sub').style.display = 'flex';
+    } catch(e) {
+        toast("Oyna ochishda xatolik: " + e.message, "err");
+    }
 }
 
 async function submitAddSub() {
@@ -1834,14 +1833,14 @@ async function submitAddSub() {
     for (let r of radios) { if (r.checked) months = parseInt(r.value); }
     
     try {
-        const res = await fetch(`${API}/admin/users/add_sub?uid=${uid}&months=${months}&password=${adminPass}`, {method:'POST'});
+        const res = await fetch(`${API}/admin/users/add_sub?uid=${uid}&months=${months}&password=${encodeURIComponent(adminPass)}`, {method:'POST'});
         const data = await res.json();
         if (data.ok) {
             toast("Obuna qo'shildi!", "ok");
             document.getElementById('mod-add-sub').style.display = 'none';
             loadAdminUsers();
-        } else { toast("Xatolik", "err"); }
-    } catch(e) { toast("Xatolik", "err"); }
+        } else { toast("Xatolik: " + (data.detail || "Server xatosi"), "err"); }
+    } catch(e) { toast("Xatolik: " + e.message, "err"); }
 }
 
 async function loadAdminPayments(){
@@ -1886,6 +1885,7 @@ async function loadAdminSettings(){
     document.getElementById('adm-set-price').value = d.monthly_price;
     document.getElementById('adm-set-card').value = d.card_number || '';
     document.getElementById('adm-set-card-owner').value = d.card_owner || '';
+    document.getElementById('adm-set-community').value = d.community_link || '';
   } catch(e){}
 }
 
@@ -1898,7 +1898,8 @@ async function saveAdminSettings(){
         channel_id: document.getElementById('adm-set-channel').value,
         monthly_price: parseInt(document.getElementById('adm-set-price').value) || 15000,
         card_number: document.getElementById('adm-set-card').value || '8600 0000 0000 0000',
-        card_owner: document.getElementById('adm-set-card-owner').value || 'Admin'
+        card_owner: document.getElementById('adm-set-card-owner').value || 'Admin',
+        community_link: document.getElementById('adm-set-community').value
       })
     });
     toast("Saqlandi!", "ok");
@@ -2030,6 +2031,7 @@ async function loadHomeStatus(){
   try{
     const r=await fetch(`${API}/auth/status/${UID}`);
     const d=await r.json();
+    if(d.community_link) { window.COMMUNITY_LINK = d.community_link; }
     renderHomeConn(d);
   }catch(e){
     renderHomeConn({connected:false});
@@ -2061,20 +2063,13 @@ async function startFw(){
     const d=await r.json();
     connected=d.connected;
   }catch(e){}
-  if(!connected){ openModal('m-bundle'); return; }
+  if(!connected){ doExpert(); return; }
   await loadChats();
   go('s-src');
 }
 function doExpert(){
-  closeModal('m-bundle');
   document.getElementById('conn-title').textContent='Expert (Trial)';
   document.getElementById('conn-desc').innerHTML='<i class="fa-solid fa-check" style="color:var(--success)"></i> Cheksiz qoidalar<br><i class="fa-solid fa-check" style="color:var(--success)"></i> Cheksiz xabarlar<br><i class="fa-solid fa-check" style="color:var(--success)"></i> Tezkor yetkazish<br><i class="fa-solid fa-check" style="color:var(--success)"></i> 40+ imkoniyat<br><i class="fa-solid fa-check" style="color:var(--success)"></i> 7 kunlik sinov<br><br><i class="fa-solid fa-lock" style="color:var(--muted)"></i> Shaxsiy chatlar uchun akkaunt ulash kerak.';
-  setConnStep(1); go('s-connect');
-}
-function doExpress(){
-  closeModal('m-bundle');
-  document.getElementById('conn-title').textContent='Express Demo';
-  document.getElementById('conn-desc').textContent='Faqat ochiq manbalarda yangi xabarlar bilan ishlaydi.';
   setConnStep(1); go('s-connect');
 }
 
@@ -2541,18 +2536,18 @@ loadDemoChats();
 loadHomeStatus();
 checkSubStatus();
 </script>
-<div class="modal" id="mod-add-sub" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(5px)">
+<div id="mod-add-sub" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(5px)">
   <div style="background:var(--surface); border-radius:var(--r-lg); width:100%; max-width:320px; padding:24px; border:1px solid rgba(255,255,255,0.1); box-shadow:0 10px 40px rgba(0,0,0,0.5)">
      <h3 style="margin:0 0 16px; font-size:18px; color:var(--text); font-weight:800">Obuna qo'shish</h3>
      <p style="font-size:13px; color:var(--muted); margin-bottom:20px" id="add-sub-username"></p>
      <input type="hidden" id="add-sub-uid">
      
      <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:24px" id="add-sub-radios">
-        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text); cursor:pointer"><input type="radio" name="add_sub_months" value="1" checked style="width:18px; height:18px; accent-color:var(--accent)"> 1 Oy uzaytirish</label>
-        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text); cursor:pointer"><input type="radio" name="add_sub_months" value="3" style="width:18px; height:18px; accent-color:var(--accent)"> 3 Oy uzaytirish</label>
-        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text); cursor:pointer"><input type="radio" name="add_sub_months" value="6" style="width:18px; height:18px; accent-color:var(--accent)"> 6 Oy uzaytirish</label>
-        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text); cursor:pointer"><input type="radio" name="add_sub_months" value="12" style="width:18px; height:18px; accent-color:var(--accent)"> 12 Oy uzaytirish</label>
-        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--success); font-weight:700; cursor:pointer"><input type="radio" name="add_sub_months" value="999" style="width:18px; height:18px; accent-color:var(--success)"> Muddatsiz (Umrbod)</label>
+        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text); cursor:pointer"><input type="radio" name="add_sub_months" value="1" checked style="width:18px; height:18px; accent-color:var(--accent)"> 1 Oy</label>
+        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text); cursor:pointer"><input type="radio" name="add_sub_months" value="3" style="width:18px; height:18px; accent-color:var(--accent)"> 3 Oy</label>
+        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text); cursor:pointer"><input type="radio" name="add_sub_months" value="6" style="width:18px; height:18px; accent-color:var(--accent)"> 6 Oy</label>
+        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text); cursor:pointer"><input type="radio" name="add_sub_months" value="12" style="width:18px; height:18px; accent-color:var(--accent)"> 12 Oy</label>
+        <label style="display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text); cursor:pointer"><input type="radio" name="add_sub_months" value="999" style="width:18px; height:18px; accent-color:var(--accent)"> Cheksiz (obuna talab qilinmaydi)</label>
      </div>
      
      <div style="display:flex; gap:12px">
