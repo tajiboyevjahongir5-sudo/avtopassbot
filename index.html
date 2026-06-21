@@ -1904,6 +1904,7 @@ async function saveAdminSettings(){
     });
     toast("Saqlandi!", "ok");
     adminPass = document.getElementById('adm-set-pass').value;
+    window.COMMUNITY_LINK = document.getElementById('adm-set-community').value;
   } catch(e){}
 }
 
