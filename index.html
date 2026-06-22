@@ -1019,32 +1019,32 @@ body{
     <div class="card">
       <div class="sec-header" onclick="toggleSec('fwd')">
         <div class="sec-icon blue"><i class="fa-solid fa-paper-plane"></i></div>
-        <span class="sec-title">Forwarding</span>
+        <span class="sec-title">Yuborish (Forwarding)</span>
         <div class="sec-arrow open" id="arr-fwd"><i class="fa-solid fa-chevron-down"></i></div>
       </div>
       <div class="sec-body open" id="body-fwd">
-        <div class="setting-row" onclick="editSetting('mode','Forwarding mode')">
-          <span class="setting-key">Forwarding mode</span>
+        <div class="setting-row" onclick="editSetting('mode','Yuborish rejimi')">
+          <span class="setting-key">Yuborish rejimi</span>
           <span class="setting-val" id="sv-mode">new</span>
         </div>
         <div class="setting-row" onclick="editSetting('receipt_delays','Kechikish vaqti (sekundlarda, masalan: 5 yoki 10)')">
           <span class="setting-key">Xabarni kechiktirib yuborish (Timer)</span>
           <span class="setting-val" id="sv-receipt_delays">0</span>
         </div>
-        <div class="setting-row" onclick="editSetting('sync_edits','Sync edits')">
-          <span class="setting-key">Sync edits</span>
+        <div class="setting-row" onclick="editSetting('sync_edits','Tahrirlashlarni sinxronlash')">
+          <span class="setting-key">Tahrirlashlarni sinxronlash</span>
           <span class="setting-val" id="sv-sync_edits">edit</span>
         </div>
-        <div class="setting-row" onclick="toggleBool('processing_report','Processing report')">
-          <span class="setting-key">Processing report</span>
+        <div class="setting-row" onclick="toggleBool('processing_report','Jarayon hisoboti')">
+          <span class="setting-key">Jarayon hisoboti</span>
           <div class="toggle" id="tgl-processing_report"></div>
         </div>
-        <div class="setting-row" onclick="toggleBool('sync_del','Sync deletions')">
-          <span class="setting-key">Sync deletions</span>
+        <div class="setting-row" onclick="toggleBool('sync_del','O\'chirishlarni sinxronlash')">
+          <span class="setting-key">O'chirishlarni sinxronlash</span>
           <div class="toggle" id="tgl-sync_del"></div>
         </div>
-        <div class="setting-row" onclick="editSetting('delayed_del','Delayed deletion')">
-          <span class="setting-key">Delayed deletion</span>
+        <div class="setting-row" onclick="editSetting('delayed_del','Kechiktirib o\'chirish')">
+          <span class="setting-key">Kechiktirib o'chirish</span>
           <span class="setting-val" id="sv-delayed_del">0</span>
         </div>
       </div>
@@ -1054,36 +1054,36 @@ body{
     <div class="card">
       <div class="sec-header" onclick="toggleSec('fil')">
         <div class="sec-icon purple"><i class="fa-solid fa-filter"></i></div>
-        <span class="sec-title">Filtering</span>
+        <span class="sec-title">Filtrlash (Filtering)</span>
         <div class="sec-arrow open" id="arr-fil"><i class="fa-solid fa-chevron-down"></i></div>
       </div>
       <div class="sec-body open" id="body-fil">
         <div class="setting-row" onclick="go('s-filters')">
-          <span class="setting-key"><i class="fa-solid fa-sliders" style="color:var(--accent);margin-right:6px;font-size:12px"></i>Filters</span>
+          <span class="setting-key"><i class="fa-solid fa-sliders" style="color:var(--accent);margin-right:6px;font-size:12px"></i>Filtrlar</span>
           <span class="setting-val" id="sv-filters">0</span>
         </div>
-        <div class="setting-row" onclick="editSetting('duplicates','Duplicates')">
-          <span class="setting-key">Duplicates</span>
+        <div class="setting-row" onclick="editSetting('duplicates','Takrorlangan xabarlar')">
+          <span class="setting-key">Takrorlangan xabarlar</span>
           <span class="setting-val" id="sv-duplicates">pass</span>
         </div>
-        <div class="setting-row" onclick="editSetting('my_messages','My messages')">
-          <span class="setting-key">My messages</span>
+        <div class="setting-row" onclick="editSetting('my_messages','O\'z xabarlarim')">
+          <span class="setting-key">O'z xabarlarim</span>
           <span class="setting-val" id="sv-my_messages">filter</span>
         </div>
-        <div class="setting-row" onclick="editSetting('filter_interval','Filter-interval')">
-          <span class="setting-key">Filter-interval</span>
+        <div class="setting-row" onclick="editSetting('filter_interval','Filtr intervali')">
+          <span class="setting-key">Filtr intervali</span>
           <span class="setting-val" id="sv-filter_interval">0</span>
         </div>
-        <div class="setting-row" onclick="editSetting('filter_order','Filtering order')">
-          <span class="setting-key">Filtering order</span>
+        <div class="setting-row" onclick="editSetting('filter_order','Filtrlash tartibi')">
+          <span class="setting-key">Filtrlash tartibi</span>
           <span class="setting-val" id="sv-filter_order">after_replacements</span>
         </div>
-        <div class="setting-row" onclick="editSetting('filter_fwd','Filter forwards')">
-          <span class="setting-key">Filter forwards</span>
+        <div class="setting-row" onclick="editSetting('filter_fwd','Forwardlarni filtrlash')">
+          <span class="setting-key">Forwardlarni filtrlash</span>
           <span class="setting-val" id="sv-filter_fwd">all</span>
         </div>
-        <div class="setting-row" onclick="editSetting('delay_filter','Delay and delayed filter')">
-          <span class="setting-key">Delay and delayed filter</span>
+        <div class="setting-row" onclick="editSetting('delay_filter','Kechiktirilgan filtr')">
+          <span class="setting-key">Kechiktirilgan filtr</span>
           <span class="setting-val" id="sv-delay_filter">0</span>
         </div>
       </div>
@@ -1093,24 +1093,24 @@ body{
     <div class="card">
       <div class="sec-header" onclick="toggleSec('src')">
         <div class="sec-icon green"><i class="fa-solid fa-database"></i></div>
-        <span class="sec-title">Source data</span>
+        <span class="sec-title">Manba ma'lumotlari</span>
         <div class="sec-arrow open" id="arr-src"><i class="fa-solid fa-chevron-down"></i></div>
       </div>
       <div class="sec-body open" id="body-src">
-        <div class="setting-row" onclick="editSetting('orig_link','Original message link')">
-          <span class="setting-key">Original message link</span>
+        <div class="setting-row" onclick="editSetting('orig_link','Asl xabar havolasi')">
+          <span class="setting-key">Asl xabar havolasi</span>
           <span class="setting-val" id="sv-orig_link">none</span>
         </div>
-        <div class="setting-row" onclick="editSetting('source_name','Source name')">
-          <span class="setting-key">Source name</span>
+        <div class="setting-row" onclick="editSetting('source_name','Manba nomi')">
+          <span class="setting-key">Manba nomi</span>
           <span class="setting-val" id="sv-source_name">none</span>
         </div>
-        <div class="setting-row" onclick="editSetting('author','Author')">
-          <span class="setting-key">Author</span>
+        <div class="setting-row" onclick="editSetting('author','Muallif')">
+          <span class="setting-key">Muallif</span>
           <span class="setting-val" id="sv-author">none</span>
         </div>
-        <div class="setting-row" onclick="editSetting('click_btn','Click the button')">
-          <span class="setting-key">Click the button</span>
+        <div class="setting-row" onclick="editSetting('click_btn','Tugmani bosish')">
+          <span class="setting-key">Tugmani bosish</span>
           <span class="setting-val" id="sv-click_btn">none</span>
         </div>
       </div>
@@ -1120,32 +1120,32 @@ body{
     <div class="card">
       <div class="sec-header" onclick="toggleSec('mod')">
         <div class="sec-icon orange"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
-        <span class="sec-title">Modification</span>
+        <span class="sec-title">O'zgartirishlar (Modification)</span>
         <div class="sec-arrow open" id="arr-mod"><i class="fa-solid fa-chevron-down"></i></div>
       </div>
       <div class="sec-body open" id="body-mod">
-        <div class="setting-row" onclick="editSetting('replacements','Replacements')">
-          <span class="setting-key">Replacements</span>
+        <div class="setting-row" onclick="editSetting('replacements','So\'zlarni almashtirish')">
+          <span class="setting-key">So'zlarni almashtirish</span>
           <span class="setting-val" id="sv-replacements">0</span>
         </div>
         <div class="setting-row" onclick="toast('GPT integratsiya tez orada!','ok')">
-          <span class="setting-key"><i class="fa-solid fa-robot" style="color:var(--warn);margin-right:6px;font-size:12px"></i>AI Processing</span>
+          <span class="setting-key"><i class="fa-solid fa-robot" style="color:var(--warn);margin-right:6px;font-size:12px"></i>AI bilan tahrirlash</span>
           <span style="font-size:11px;color:var(--warn);background:var(--warn-dim);border:1px solid rgba(255,165,2,.2);padding:2px 8px;border-radius:var(--r-sm);font-weight:600">Tez orada</span>
         </div>
-        <div class="setting-row" onclick="editSetting('trim','Trim')">
-          <span class="setting-key">Trim</span>
+        <div class="setting-row" onclick="editSetting('trim','Matnni qisqartirish')">
+          <span class="setting-key">Matnni qisqartirish</span>
           <span class="setting-val" id="sv-trim">0</span>
         </div>
-        <div class="setting-row" onclick="editSetting('header','Header')">
-          <span class="setting-key">Header</span>
+        <div class="setting-row" onclick="editSetting('header','Yuqori matn (Header)')">
+          <span class="setting-key">Yuqori matn (Header)</span>
           <span class="setting-val" id="sv-header">none</span>
         </div>
-        <div class="setting-row" onclick="editSetting('footer','Footer')">
-          <span class="setting-key">Footer</span>
+        <div class="setting-row" onclick="editSetting('footer','Quyi matn (Footer)')">
+          <span class="setting-key">Quyi matn (Footer)</span>
           <span class="setting-val" id="sv-footer">none</span>
         </div>
-        <div class="setting-row" onclick="editSetting('replace_links','Replace source links')">
-          <span class="setting-key">Replace source links</span>
+        <div class="setting-row" onclick="editSetting('replace_links','Manba havolalarini almashtirish')">
+          <span class="setting-key">Manba havolalarini almashtirish</span>
           <span class="setting-val" id="sv-replace_links">ignore</span>
         </div>
       </div>
@@ -1155,36 +1155,36 @@ body{
     <div class="card">
       <div class="sec-header" onclick="toggleSec('cnt')">
         <div class="sec-icon" style="background:rgba(255,71,87,.12);color:var(--danger)"><i class="fa-solid fa-photo-film"></i></div>
-        <span class="sec-title">Content</span>
+        <span class="sec-title">Kontent / Media</span>
         <div class="sec-arrow open" id="arr-cnt"><i class="fa-solid fa-chevron-down"></i></div>
       </div>
       <div class="sec-body open" id="body-cnt">
-        <div class="setting-row" onclick="editSetting('watermarks','Watermarks')">
-          <span class="setting-key">Watermarks</span>
+        <div class="setting-row" onclick="editSetting('watermarks','Suv belgilari (Watermarks)')">
+          <span class="setting-key">Suv belgilari (Watermarks)</span>
           <span class="setting-val" id="sv-watermarks">none</span>
         </div>
-        <div class="setting-row" onclick="editSetting('media_caption','Media caption')">
-          <span class="setting-key">Media caption</span>
+        <div class="setting-row" onclick="editSetting('media_caption','Media matni (Caption)')">
+          <span class="setting-key">Media matni (Caption)</span>
           <span class="setting-val" id="sv-media_caption">caption_name</span>
         </div>
-        <div class="setting-row" onclick="editSetting('feedback_btns','Feedback buttons')">
-          <span class="setting-key">Feedback buttons</span>
+        <div class="setting-row" onclick="editSetting('feedback_btns','Fikr-mulohaza tugmalari')">
+          <span class="setting-key">Fikr-mulohaza tugmalari</span>
           <span class="setting-val" id="sv-feedback_btns">none</span>
         </div>
-        <div class="setting-row" onclick="editSetting('copy_btns','Copy buttons')">
-          <span class="setting-key">Copy buttons</span>
+        <div class="setting-row" onclick="editSetting('copy_btns','Nusxalash tugmalari')">
+          <span class="setting-key">Nusxalash tugmalari</span>
           <span class="setting-val" id="sv-copy_btns">none</span>
         </div>
-        <div class="setting-row" onclick="editSetting('add_btns','Add buttons')">
-          <span class="setting-key">Add buttons</span>
+        <div class="setting-row" onclick="editSetting('add_btns','Tugmalar qo\'shish')">
+          <span class="setting-key">Tugmalar qo'shish</span>
           <span class="setting-val" id="sv-add_btns">none</span>
         </div>
-        <div class="setting-row" onclick="editSetting('polls','Polls')">
-          <span class="setting-key">Polls</span>
+        <div class="setting-row" onclick="editSetting('polls','So\'rovnomalar')">
+          <span class="setting-key">So'rovnomalar</span>
           <span class="setting-val" id="sv-polls">none</span>
         </div>
-        <div class="setting-row" onclick="editSetting('comments','Comments')">
-          <span class="setting-key">Comments</span>
+        <div class="setting-row" onclick="editSetting('comments','Izohlar')">
+          <span class="setting-key">Izohlar</span>
           <span class="setting-val" id="sv-comments">0</span>
         </div>
       </div>
@@ -1194,7 +1194,7 @@ body{
     <div class="card">
       <div class="sec-header" onclick="toggleSec('pub')">
         <div class="sec-icon" style="background:rgba(0,198,255,.1);color:#00c6ff"><i class="fa-solid fa-rocket"></i></div>
-        <span class="sec-title">Publishing</span>
+        <span class="sec-title">Nashr qilish (Publishing)</span>
         <div class="sec-arrow open" id="arr-pub"><i class="fa-solid fa-chevron-down"></i></div>
       </div>
       <div class="sec-body open" id="body-pub">
@@ -1202,36 +1202,36 @@ body{
           <span class="setting-key"><i class="fa-brands fa-google-drive" style="color:#4285f4;margin-right:6px;font-size:12px"></i>Google Drive</span>
           <div class="toggle" id="tgl-google_drive"></div>
         </div>
-        <div class="setting-row" onclick="editSetting('pub_delay','Delay')">
-          <span class="setting-key">Delay</span>
+        <div class="setting-row" onclick="editSetting('pub_delay','Kechikish (Delay)')">
+          <span class="setting-key">Kechikish (Delay)</span>
           <span class="setting-val" id="sv-pub_delay">0</span>
         </div>
-        <div class="setting-row" onclick="toggleBool('pin','Pin')">
-          <span class="setting-key">Pin</span>
+        <div class="setting-row" onclick="toggleBool('pin','Qadab qo\'yish (Pin)')">
+          <span class="setting-key">Qadab qo'yish (Pin)</span>
           <div class="toggle" id="tgl-pin"></div>
         </div>
-        <div class="setting-row" onclick="toggleBool('silent','Silent mode')">
-          <span class="setting-key">Silent mode</span>
+        <div class="setting-row" onclick="toggleBool('silent','Sessiz rejim')">
+          <span class="setting-key">Sessiz rejim</span>
           <div class="toggle" id="tgl-silent"></div>
         </div>
-        <div class="setting-row" onclick="editSetting('preview','Preview')">
-          <span class="setting-key">Preview</span>
+        <div class="setting-row" onclick="editSetting('preview','Oldindan ko\'rish (Preview)')">
+          <span class="setting-key">Oldindan ko'rish (Preview)</span>
           <span class="setting-val" id="sv-preview">pass</span>
         </div>
-        <div class="setting-row" onclick="editSetting('delivery_rate','Delivery rate')">
-          <span class="setting-key">Delivery rate</span>
+        <div class="setting-row" onclick="editSetting('delivery_rate','Yetkazib berish tezligi')">
+          <span class="setting-key">Yetkazib berish tezligi</span>
           <span class="setting-val" id="sv-delivery_rate">0</span>
         </div>
-        <div class="setting-row" onclick="editSetting('schedule','Schedule')">
-          <span class="setting-key"><i class="fa-solid fa-calendar" style="color:var(--muted);margin-right:6px;font-size:12px"></i>Schedule</span>
+        <div class="setting-row" onclick="editSetting('schedule','Rejalashtirish (Schedule)')">
+          <span class="setting-key"><i class="fa-solid fa-calendar" style="color:var(--muted);margin-right:6px;font-size:12px"></i>Rejalashtirish (Schedule)</span>
           <span class="setting-val" id="sv-schedule">0</span>
         </div>
-        <div class="setting-row" onclick="editSetting('flood_behavior','Flood behavior')">
-          <span class="setting-key">Flood behavior</span>
+        <div class="setting-row" onclick="editSetting('flood_behavior','Flood holati')">
+          <span class="setting-key">Flood holati</span>
           <span class="setting-val" id="sv-flood_behavior">reschedule...</span>
         </div>
-        <div class="setting-row" onclick="editSetting('moderation','Moderation')">
-          <span class="setting-key">Moderation</span>
+        <div class="setting-row" onclick="editSetting('moderation','Moderatsiya')">
+          <span class="setting-key">Moderatsiya</span>
           <span class="setting-val" id="sv-moderation">Off</span>
         </div>
       </div>
