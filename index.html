@@ -2380,6 +2380,25 @@ function renderRuleSettings(){
     const el=document.getElementById('tgl-'+k);
     if(el){ const v=ruleSettings[k]; el.className='toggle'+(v?' on':''); }
   });
+  
+  const defaults = {
+    mode: 'new', receipt_delays: '0', sync_edits: 'edit', delayed_del: '0',
+    duplicates: 'pass', my_messages: 'filter', filter_interval: '0', filter_order: 'after_replacements',
+    filter_fwd: 'all', delay_filter: '0', orig_link: 'none', source_name: 'none',
+    author: 'none', click_btn: 'none', replacements: '0', trim: '0',
+    header: 'none', footer: 'none', replace_links: 'ignore', watermarks: 'none',
+    media_caption: 'caption_name', feedback_btns: 'none', copy_btns: 'none',
+    add_btns: 'none', polls: 'none', comments: '0', pub_delay: '0',
+    preview: 'pass', delivery_rate: '0', schedule: '0', flood_behavior: 'reschedule...',
+    moderation: 'Off'
+  };
+  Object.entries(defaults).forEach(([k, d]) => {
+    const el = document.getElementById('sv-' + k);
+    if (el) {
+      el.textContent = ruleSettings[k] !== undefined ? ruleSettings[k] : d;
+    }
+  });
+
   const fi=document.getElementById('sv-filters');
   if(fi) fi.textContent=activeFilters.length;
 }

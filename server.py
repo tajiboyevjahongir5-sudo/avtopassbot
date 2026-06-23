@@ -13,6 +13,8 @@ from pathlib import Path
 from datetime import datetime
 from contextlib import asynccontextmanager
 import pymongo
+from PIL import Image, ImageDraw, ImageFont
+
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -194,6 +196,210 @@ def save(uid, data):
     db.users.update_one({"_id": uid}, {"$set": data}, upsert=True)
 
 # ═══════════════════════════════════════
+# HELPER FUNCTIONS & DELAY QUEUE WORKER
+# ═══════════════════════════════════════
+def add_watermark(image_path: str, text: str) -> bool:
+    try:
+        img = Image.open(image_path)
+        draw = ImageDraw.Draw(img)
+        width, height = img.size
+        font_size = max(15, int(width * 0.04))
+        try:
+            font = ImageFont.truetype("arial.ttf", font_size)
+        except Exception:
+            try:
+                font = ImageFont.truetype("LiberationSans-Regular.ttf", font_size)
+            except Exception:
+                font = ImageFont.load_default()
+        
+        try:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+        except AttributeError:
+            text_width, text_height = draw.textsize(text, font=font)
+            
+        margin = 15
+        x = width - text_width - margin
+        y = height - text_height - margin
+        
+        draw.text((x + 2, y + 2), text, fill=(0, 0, 0), font=font)
+        draw.text((x, y), text, fill=(255, 255, 255), font=font)
+        
+        img.save(image_path)
+        log.info(f"Watermark '{text}' added to {image_path}")
+        return True
+    except Exception as e:
+        log.error(f"Failed to add watermark: {e}")
+        return False
+
+async def process_message_text(text: str, settings: dict) -> str:
+    modified_text = text
+    
+    replacements_str = settings.get("replacements", "").strip()
+    if replacements_str:
+        lines = replacements_str.split("\n")
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            for delim in ("->", "=>", "="):
+                if delim in line:
+                    parts = line.split(delim, 1)
+                    from_text = parts[0].strip()
+                    to_text = parts[1].strip()
+                    modified_text = modified_text.replace(from_text, to_text)
+                    break
+                    
+    replacements_list = settings.get("replacements_list", [])
+    for rep in replacements_list:
+        if rep.get("from") and rep.get("to") is not None:
+            modified_text = modified_text.replace(rep["from"], rep["to"])
+            
+    try:
+        trim_val = int(settings.get("trim", 0))
+        if trim_val > 0 and len(modified_text) > trim_val:
+            modified_text = modified_text[:trim_val] + "..."
+    except Exception:
+        pass
+        
+    header = settings.get("header", "").strip()
+    footer = settings.get("footer", "").strip()
+    if header and header.lower() != "none":
+        modified_text = header + "\n\n" + modified_text
+    if footer and footer.lower() != "none":
+        modified_text = modified_text + "\n\n" + footer
+        
+    replace_links = settings.get("replace_links", "leave")
+    if replace_links == "delete":
+        modified_text = re.sub(r"https?://\S+|www\.\S+", "", modified_text)
+        
+    return modified_text
+
+def add_to_delay_queue(uid, source_id, message_ids, dest_id, delivery, settings, rule_index, delay_sec):
+    send_at = datetime.now().timestamp() + delay_sec
+    db.delayed_messages.insert_one({
+        "uid": uid,
+        "source_id": str(source_id),
+        "message_ids": message_ids,
+        "dest_id": str(dest_id),
+        "delivery": delivery,
+        "settings": settings,
+        "rule_index": rule_index,
+        "send_at": send_at,
+        "status": "pending"
+    })
+    log.info(f"[{uid}] Message {message_ids} added to delay queue (send in {delay_sec}s)")
+
+async def send_message_now(client: TelegramClient, uid: str, source_id: str, message_ids: list, dest_id: str, delivery: str, settings: dict, rule_index: int, data: dict):
+    try:
+        source_peer = int(source_id) if source_id.lstrip('-').isdigit() else source_id
+        messages = await client.get_messages(source_peer, ids=message_ids)
+        if not messages:
+            return
+        if not isinstance(messages, list):
+            messages = [messages]
+        messages = [m for m in messages if m is not None]
+        if not messages:
+            return
+            
+        messages.sort(key=lambda m: m.id)
+        main_msg = messages[0]
+        text = main_msg.text or main_msg.caption or ""
+        
+        modified_text = await process_message_text(text, settings)
+        
+        media_files = []
+        temp_paths = []
+        for msg in messages:
+            if msg.media:
+                watermark_text = settings.get("watermarks", "").strip()
+                if watermark_text and watermark_text.lower() != "none":
+                    file_path = await client.download_media(msg)
+                    if file_path:
+                        temp_paths.append(file_path)
+                        if file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                            add_watermark(file_path, watermark_text)
+                        media_files.append(file_path)
+                else:
+                    media_files.append(msg.media)
+                    
+        dest = int(dest_id) if dest_id.lstrip('-').isdigit() else dest_id
+        
+        if delivery in ("copy_bot", "copy_acc", "copy_flood"):
+            if media_files:
+                if len(media_files) == 1:
+                    await client.send_file(dest, media_files[0], caption=modified_text or None)
+                else:
+                    await client.send_file(dest, media_files, caption=modified_text or None)
+            elif modified_text:
+                await client.send_message(dest, modified_text)
+        elif delivery in ("fwd_acc", "fwd_copy"):
+            try:
+                await client.forward_messages(dest, messages)
+            except Exception:
+                if media_files:
+                    if len(media_files) == 1:
+                        await client.send_file(dest, media_files[0], caption=modified_text or None)
+                    else:
+                        await client.send_file(dest, media_files, caption=modified_text or None)
+                elif modified_text:
+                    await client.send_message(dest, modified_text)
+        else:
+            await client.forward_messages(dest, messages)
+
+        for path in temp_paths:
+            try: os.remove(path)
+            except: pass
+
+        data = load(uid)
+        if 0 <= rule_index < len(data.get("rules", [])):
+            data["rules"][rule_index]["count"] = data["rules"][rule_index].get("count", 0) + 1
+            save(uid, data)
+            
+        log.info(f"[{uid}] Forwarded message(s) {message_ids} successfully to {dest_id}")
+    except Exception as e:
+        log.error(f"[{uid}] send_message_now error: {e}")
+
+async def delay_queue_worker():
+    log.info("Delay queue worker started...")
+    while True:
+        try:
+            now = datetime.now().timestamp()
+            pending = list(db.delayed_messages.find({"status": "pending", "send_at": {"$lte": now}}))
+            for doc in pending:
+                doc_id = doc["_id"]
+                uid = doc["uid"]
+                source_id = doc["source_id"]
+                message_ids = doc["message_ids"]
+                dest_id = doc["dest_id"]
+                delivery = doc["delivery"]
+                settings = doc["settings"]
+                rule_index = doc["rule_index"]
+                
+                res = db.delayed_messages.update_one({"_id": doc_id, "status": "pending"}, {"$set": {"status": "sending"}})
+                if res.modified_count == 0:
+                    continue
+                
+                client = await get_client(uid)
+                if not client:
+                    log.error(f"[{uid}] Client not available for delayed message. Retrying later.")
+                    db.delayed_messages.update_one({"_id": doc_id}, {"$set": {"status": "pending", "send_at": now + 60}})
+                    continue
+                
+                user_data = load(uid)
+                try:
+                    await send_message_now(client, uid, source_id, message_ids, dest_id, delivery, settings, rule_index, user_data)
+                    db.delayed_messages.delete_one({"_id": doc_id})
+                except Exception as ex:
+                    log.error(f"[{uid}] Failed to send delayed message: {ex}")
+                    db.delayed_messages.update_one({"_id": doc_id}, {"$set": {"status": "pending", "send_at": now + 30}})
+        except Exception as e:
+            log.error(f"Error in delay queue worker: {e}")
+        await asyncio.sleep(5)
+
+
+# ═══════════════════════════════════════
 # MODELS
 # ═══════════════════════════════════════
 class PhoneReq(BaseModel):
@@ -290,6 +496,9 @@ def check_filters(msg_text: str, views: int, reactions: int, sender_name: str, f
                 return False
     return True
 
+# Global dictionary for media group collection
+media_groups = {}
+
 def register_handler(uid: str, client: TelegramClient):
     """Foydalanuvchi uchun BIR MARTA handler ro'yxatga olish"""
     if uid in handlers_registered:
@@ -307,90 +516,78 @@ def register_handler(uid: str, client: TelegramClient):
             if rule["source_id"] != chat_id:
                 continue
 
-            msg = event.message
-            text = msg.text or msg.caption or ""
-            views = getattr(msg, "views", 0) or 0
-            reactions = 0
-            if hasattr(msg, "reactions") and msg.reactions:
-                try: reactions = sum(r.count for r in msg.reactions.results)
-                except: pass
-            sender_name = ""
-            try:
-                sender = await event.get_sender()
-                if sender:
-                    parts = [getattr(sender, "first_name", ""), getattr(sender, "last_name", ""), getattr(sender, "username", "")]
-                    sender_name = " ".join(p for p in parts if p)
-            except: pass
-
             if not check_sub(uid):
                 continue
-            if not check_filters(text, views, reactions, sender_name, rule.get("filters", [])):
-                continue
 
-            dest_id = rule["dest_id"]
-            delivery = rule.get("delivery", "copy_bot")
-            settings = rule.get("settings", {})
-
-            try:
-                # Timer (Kechikish)
-                try:
-                    delay_sec = int(settings.get("receipt_delays", 0))
-                    if delay_sec > 0:
-                        await asyncio.sleep(delay_sec)
-                except Exception:
-                    pass
-
-                # Header / Footer
-                header = settings.get("header", "").strip()
-                footer = settings.get("footer", "").strip()
-
-                # Matn almashtirish
-                replacements = settings.get("replacements_list", [])
-                modified_text = text
-                for rep in replacements:
-                    if rep.get("from") and rep.get("to") is not None:
-                        modified_text = modified_text.replace(rep["from"], rep["to"])
-
-                if header: modified_text = header + "\n\n" + modified_text
-                if footer: modified_text = modified_text + "\n\n" + footer
-
-                dest = int(dest_id)
-
-                if delivery in ("copy_bot", "copy_acc", "copy_flood"):
-                    if msg.media:
-                        await client.send_file(dest, msg.media, caption=modified_text or None)
-                    elif modified_text:
-                        await client.send_message(dest, modified_text)
-                elif delivery in ("fwd_acc", "fwd_copy"):
-                    try:
-                        await client.forward_messages(dest, msg, event.chat_id)
-                    except Exception:
-                        # copy if restricted
-                        if msg.media:
-                            await client.send_file(dest, msg.media, caption=modified_text or None)
-                        elif modified_text:
-                            await client.send_message(dest, modified_text)
+            msg = event.message
+            
+            # Media Group (Album) handling
+            if msg.grouped_id:
+                gid = msg.grouped_id
+                if gid not in media_groups:
+                    media_groups[gid] = [event]
+                    
+                    async def process_group_after_delay(g_id, u_id, r_rule, r_idx, u_data):
+                        await asyncio.sleep(0.8)  # Wait for other items in group to arrive
+                        events_in_group = media_groups.pop(g_id, [])
+                        if not events_in_group:
+                            return
+                        events_in_group.sort(key=lambda e: e.message.id)
+                        
+                        await process_message_or_group(client, events_in_group, u_id, r_rule, r_idx, u_data)
+                        
+                    asyncio.create_task(process_group_after_delay(gid, uid, rule, i, data))
                 else:
-                    await client.forward_messages(dest, msg, event.chat_id)
-
-                # Hisoblagich
-                data["rules"][i]["count"] = data["rules"][i].get("count", 0) + 1
-                save(uid, data)
-                log.info(f"[{uid}] Forwarded: {chat_id} → {dest_id} (delivery={delivery})")
-
-            except ChatAdminRequiredError:
-                log.warning(f"[{uid}] Bot admin emas: {dest_id}")
-            except FloodWaitError as e:
-                log.warning(f"[{uid}] FloodWait {e.seconds}s")
-                await asyncio.sleep(e.seconds)
-                try:
-                    await client.forward_messages(int(dest_id), msg, event.chat_id)
-                except: pass
-            except Exception as e:
-                log.error(f"[{uid}] Forward error: {e}")
+                    media_groups[gid].append(event)
+                continue  # Stop individual processing
+                
+            # Single message processing
+            await process_message_or_group(client, [event], uid, rule, i, data)
 
     handlers_registered.add(uid)
     log.info(f"[{uid}] Handler ro'yxatga olindi ✅")
+
+async def process_message_or_group(client: TelegramClient, events_in_group: list, uid: str, rule: dict, rule_index: int, data: dict):
+    try:
+        main_event = events_in_group[0]
+        chat_id = str(main_event.chat_id)
+        msg = main_event.message
+        
+        text = msg.text or msg.caption or ""
+        views = getattr(msg, "views", 0) or 0
+        reactions = 0
+        if hasattr(msg, "reactions") and msg.reactions:
+            try: reactions = sum(r.count for r in msg.reactions.results)
+            except: pass
+        sender_name = ""
+        try:
+            sender = await main_event.get_sender()
+            if sender:
+                parts = [getattr(sender, "first_name", ""), getattr(sender, "last_name", ""), getattr(sender, "username", "")]
+                sender_name = " ".join(p for p in parts if p)
+        except: pass
+
+        if not check_filters(text, views, reactions, sender_name, rule.get("filters", [])):
+            return
+
+        dest_id = rule["dest_id"]
+        delivery = rule.get("delivery", "copy_bot")
+        settings = rule.get("settings", {})
+
+        try:
+            delay_sec = int(settings.get("pub_delay", settings.get("receipt_delays", 0)))
+        except Exception:
+            delay_sec = 0
+
+        message_ids = [e.message.id for e in events_in_group]
+
+        if delay_sec > 0:
+            add_to_delay_queue(uid, chat_id, message_ids, dest_id, delivery, settings, rule_index, delay_sec)
+        else:
+            await send_message_now(client, uid, chat_id, message_ids, dest_id, delivery, settings, rule_index, data)
+    except Exception as e:
+        log.error(f"[{uid}] process_message_or_group error: {e}")
+
 
 async def get_client(uid: str) -> Optional[TelegramClient]:
     """Mavjud clientni qaytaradi yoki sessiondan tiklaydi"""
@@ -443,6 +640,8 @@ async def lifespan(app: FastAPI):
                     log.info(f"Session tiklandi: {uid}")
         except Exception as e:
             log.error(f"Startup restore {uid}: {e}")
+    # Start background delay queue worker
+    asyncio.create_task(delay_queue_worker())
     yield
     # Shutdown — barcha clientlarni yopish
     for uid, c in clients.items():
