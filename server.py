@@ -216,6 +216,7 @@ class AdminSettings(BaseModel):
     monthly_price: int
     card_number: str = "8600 0000 0000 0000"
     card_owner: str = "Admin"
+    community_link: str = ""
 
 class SubRequest(BaseModel):
     user_id: str
