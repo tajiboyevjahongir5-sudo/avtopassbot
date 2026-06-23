@@ -1249,7 +1249,7 @@ body{
 <div class="screen" id="s-filters">
   <div class="hdr">
     <button class="hdr-back" onclick="go('s-rsettings')"><i class="fa-solid fa-chevron-left" style="font-size:12px"></i></button>
-    <div class="hdr-title"><i class="fa-solid fa-filter" style="color:var(--accent);margin-right:6px;font-size:13px"></i>Filters</div>
+    <div class="hdr-title"><i class="fa-solid fa-filter" style="color:var(--accent);margin-right:6px;font-size:13px"></i>Filtrlar</div>
     <button class="hdr-btn" onclick="toggleFilterInfo()"><i class="fa-solid fa-circle-info"></i></button>
   </div>
   <div class="content" style="padding-bottom:80px">
@@ -1275,7 +1275,7 @@ body{
   <div class="filter-toolbar">
     <div id="ftype-display" class="filter-type-sel" onclick="toggleFTypeDrop()">
       <span id="ftype-icon">🎯</span>
-      <span id="ftype-label" style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Exact text filter</span>
+      <span id="ftype-label" style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Aniq matn filtri</span>
       <i class="fa-solid fa-chevron-down" style="color:var(--muted);font-size:10px;flex-shrink:0"></i>
     </div>
     <button class="ftb-btn" onclick="addFilter()" title="Qo'shish"><i class="fa-solid fa-plus"></i></button>
@@ -1290,7 +1290,7 @@ body{
 <div class="screen" id="s-rules">
   <div class="hdr">
     <button class="hdr-back" onclick="go('s-home')"><i class="fa-solid fa-chevron-left" style="font-size:12px"></i></button>
-    <div class="hdr-title"><i class="fa-solid fa-list-check" style="color:var(--accent);margin-right:6px;font-size:13px"></i>My Rules</div>
+    <div class="hdr-title"><i class="fa-solid fa-list-check" style="color:var(--accent);margin-right:6px;font-size:13px"></i>Mening qoidalarim</div>
     <button class="hdr-menu" onclick="openMenu()"><i class="fa-solid fa-bars" style="font-size:12px"></i></button>
   </div>
   <div class="content pb80" id="rules-list">
@@ -1997,7 +1997,7 @@ let rules = JSON.parse(localStorage.getItem('fb_rules')||'[]');
 let currentRuleIdx = -1;
 let ruleSettings = {};
 let activeFilters = [];
-let selectedFilterType = {icon:'🎯',label:'Exact text filter',val:'exact'};
+let selectedFilterType = {icon:'🎯',label:'Aniq matn filtri',val:'exact'};
 
 // ═══════════════════════════════
 // NAVIGATION
@@ -2427,18 +2427,18 @@ function filterSettings(){
 // FILTERS
 // ═══════════════════════════════
 const filterTypes=[
-  {icon:'🎯',label:'Exact text filter',val:'exact'},
-  {icon:'🔍',label:'RegEx filter',val:'regex'},
-  {icon:'🕐',label:'Date/time filter',val:'datetime'},
-  {icon:'💬',label:'Topic filter',val:'topic'},
-  {icon:'👤',label:'Author filter',val:'author'},
-  {icon:'👁',label:'Min. views',val:'min_views'},
-  {icon:'❤️',label:'Min. reactions',val:'min_reactions'},
-  {icon:'➡️',label:'Min. forwards',val:'min_forwards'},
-  {icon:'💬',label:'Min. replies',val:'min_replies'},
-  {icon:'❤️',label:'Min. reactions to views',val:'react_views'},
-  {icon:'➡️',label:'Min. forwards to views',val:'fwd_views'},
-  {icon:'💬',label:'Min. replies to views',val:'rep_views'},
+  {icon:'🎯',label:'Aniq matn filtri',val:'exact'},
+  {icon:'🔍',label:'RegEx (qolip) filtri',val:'regex'},
+  {icon:'🕐',label:'Sana/vaqt filtri',val:'datetime'},
+  {icon:'💬',label:'Mavzu filtri',val:'topic'},
+  {icon:'👤',label:'Muallif filtri',val:'author'},
+  {icon:'👁',label:'Min. ko\'rishlar',val:'min_views'},
+  {icon:'❤️',label:'Min. reaksiyalar',val:'min_reactions'},
+  {icon:'➡️',label:'Min. ulashishlar',val:'min_forwards'},
+  {icon:'💬',label:'Min. izohlar',val:'min_replies'},
+  {icon:'❤️',label:'Min. reaksiya/ko\'rish',val:'react_views'},
+  {icon:'➡️',label:'Min. ulashish/ko\'rish',val:'fwd_views'},
+  {icon:'💬',label:'Min. izoh/ko\'rish',val:'rep_views'},
 ];
 function buildFTypeDropdown(){
   const el=document.getElementById('ftype-drop');
