@@ -177,7 +177,8 @@ def check_sub(uid: str) -> bool:
         subs[uid] = {
             "expires_at": now + (7 * 24 * 3600),
             "trial": True,
-            "registered_at": now
+            "registered_at": now,
+            "reminder_sent": False
         }
         save_subs(subs)
         return True
@@ -488,6 +489,38 @@ async def keepalive_worker():
             log.error(f"Error in keepalive worker: {e}")
         await asyncio.sleep(60)
 
+async def subscription_reminder_worker():
+    log.info("Subscription reminder worker started...")
+    while True:
+        try:
+            now = datetime.now().timestamp()
+            subs = load_subs()
+            changed = False
+            for uid, user_sub in subs.items():
+                if uid == "demo_user": continue
+                expires_at = user_sub.get("expires_at", 0)
+                reminder_sent = user_sub.get("reminder_sent", False)
+                
+                if 0 < expires_at - now <= 24 * 3600 and not reminder_sent:
+                    try:
+                        text = (
+                            "⚠️ **Diqqat! Obuna muddati tugamoqda!**\n\n"
+                            "Hurmatli foydalanuvchi, sizning obunangiz tugashiga 1 kundan kam vaqt qoldi. "
+                            "Agar to'lovni amalga oshirmasangiz, bot xabar uzatishni to'xtatadi.\n\n"
+                            "Uzluksiz xizmatdan foydalanish uchun to'lovni vaqtida amalga oshiring. /pay"
+                        )
+                        await ptb_app.bot.send_message(chat_id=int(uid), text=text, parse_mode="Markdown")
+                        user_sub["reminder_sent"] = True
+                        changed = True
+                        log.info(f"[{uid}] Subscription reminder sent successfully.")
+                    except Exception as msg_e:
+                        log.error(f"[{uid}] Failed to send reminder: {msg_e}")
+            if changed:
+                save_subs(subs)
+        except Exception as e:
+            log.error(f"Error in subscription reminder worker: {e}")
+        await asyncio.sleep(3600)
+
 
 # ═══════════════════════════════════════
 # MODELS
@@ -744,6 +777,7 @@ async def lifespan(app: FastAPI):
     # Start background workers
     asyncio.create_task(delay_queue_worker())
     asyncio.create_task(keepalive_worker())
+    asyncio.create_task(subscription_reminder_worker())
     yield
     # Shutdown — barcha clientlarni yopish
     for uid, c in clients.items():
@@ -1033,6 +1067,7 @@ async def admin_add_sub(uid: str, months: int, password: str = ""):
         user_sub["expires_at"] = current_exp + (months * 30 * 24 * 3600)
         
     user_sub["trial"] = False
+    user_sub["reminder_sent"] = False
     subs[uid] = user_sub
     save_subs(subs)
     return {"ok": True}
@@ -1065,6 +1100,7 @@ async def approve_payment(suffix: str, password: str = ""):
     user_sub["phone"] = p_data.get("phone", user_sub.get("phone", ""))
     user_sub["name"] = p_data.get("name", user_sub.get("name", ""))
     user_sub["username"] = p_data.get("username", user_sub.get("username", ""))
+    user_sub["reminder_sent"] = False
     subs[uid] = user_sub
     save_subs(subs)
     
