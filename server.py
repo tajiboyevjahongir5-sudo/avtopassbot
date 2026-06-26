@@ -291,7 +291,74 @@ def add_to_delay_queue(uid, source_id, message_ids, dest_id, delivery, settings,
     })
     log.info(f"[{uid}] Message {message_ids} added to delay queue (send in {delay_sec}s)")
 
-async def send_message_now(client: TelegramClient, uid: str, source_id: str, message_ids: list, dest_id: str, delivery: str, settings: dict, rule_index: int, data: dict):
+async def send_instant(client: TelegramClient, uid: str, events_list: list, dest_id: str, delivery: str, settings: dict, rule_index: int):
+    """Xabarni TO'G'RIDAN-TO'G'RI event ob'ektidan yuboradi (qayta yuklamasdan)"""
+    try:
+        messages = [e.message for e in events_list]
+        main_msg = messages[0]
+        text = main_msg.text or main_msg.caption or ""
+        
+        modified_text = await process_message_text(text, settings)
+        
+        media_files = []
+        temp_paths = []
+        for msg in messages:
+            if msg.media:
+                watermark_text = settings.get("watermarks", "").strip()
+                if watermark_text and watermark_text.lower() != "none":
+                    file_path = await client.download_media(msg)
+                    if file_path:
+                        temp_paths.append(file_path)
+                        if file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                            add_watermark(file_path, watermark_text)
+                        media_files.append(file_path)
+                else:
+                    media_files.append(msg.media)
+                    
+        dest = int(dest_id) if dest_id.lstrip('-').isdigit() else dest_id
+        
+        if delivery in ("copy_bot", "copy_acc", "copy_flood"):
+            if media_files:
+                if len(media_files) == 1:
+                    await client.send_file(dest, media_files[0], caption=modified_text or None)
+                else:
+                    await client.send_file(dest, media_files, caption=modified_text or None)
+            elif modified_text:
+                await client.send_message(dest, modified_text)
+        elif delivery in ("fwd_acc", "fwd_copy"):
+            try:
+                await client.forward_messages(dest, messages)
+            except Exception:
+                if media_files:
+                    if len(media_files) == 1:
+                        await client.send_file(dest, media_files[0], caption=modified_text or None)
+                    else:
+                        await client.send_file(dest, media_files, caption=modified_text or None)
+                elif modified_text:
+                    await client.send_message(dest, modified_text)
+        else:
+            await client.forward_messages(dest, messages)
+
+        for path in temp_paths:
+            try: os.remove(path)
+            except: pass
+
+        data = load(uid)
+        if 0 <= rule_index < len(data.get("rules", [])):
+            data["rules"][rule_index]["count"] = data["rules"][rule_index].get("count", 0) + 1
+            save(uid, data)
+            
+        log.info(f"[{uid}] Forwarded {len(messages)} message(s) to {dest_id}")
+    except ChatAdminRequiredError:
+        log.warning(f"[{uid}] Bot admin emas: {dest_id}")
+    except FloodWaitError as e:
+        log.warning(f"[{uid}] FloodWait {e.seconds}s")
+        await asyncio.sleep(e.seconds)
+    except Exception as e:
+        log.error(f"[{uid}] send_instant error: {e}")
+
+async def send_delayed(client: TelegramClient, uid: str, source_id: str, message_ids: list, dest_id: str, delivery: str, settings: dict, rule_index: int):
+    """Kechiktirilgan xabarlarni bazadan qayta yuklab yuboradi"""
     try:
         source_peer = int(source_id) if source_id.lstrip('-').isdigit() else source_id
         messages = await client.get_messages(source_peer, ids=message_ids)
@@ -357,9 +424,9 @@ async def send_message_now(client: TelegramClient, uid: str, source_id: str, mes
             data["rules"][rule_index]["count"] = data["rules"][rule_index].get("count", 0) + 1
             save(uid, data)
             
-        log.info(f"[{uid}] Forwarded message(s) {message_ids} successfully to {dest_id}")
+        log.info(f"[{uid}] Delayed message(s) {message_ids} sent to {dest_id}")
     except Exception as e:
-        log.error(f"[{uid}] send_message_now error: {e}")
+        log.error(f"[{uid}] send_delayed error: {e}")
 
 async def delay_queue_worker():
     log.info("Delay queue worker started...")
@@ -387,9 +454,8 @@ async def delay_queue_worker():
                     db.delayed_messages.update_one({"_id": doc_id}, {"$set": {"status": "pending", "send_at": now + 60}})
                     continue
                 
-                user_data = load(uid)
                 try:
-                    await send_message_now(client, uid, source_id, message_ids, dest_id, delivery, settings, rule_index, user_data)
+                    await send_delayed(client, uid, source_id, message_ids, dest_id, delivery, settings, rule_index)
                     db.delayed_messages.delete_one({"_id": doc_id})
                 except Exception as ex:
                     log.error(f"[{uid}] Failed to send delayed message: {ex}")
@@ -397,6 +463,30 @@ async def delay_queue_worker():
         except Exception as e:
             log.error(f"Error in delay queue worker: {e}")
         await asyncio.sleep(5)
+
+async def keepalive_worker():
+    log.info("Keepalive worker started...")
+    while True:
+        try:
+            # MongoDB dan ulanishi kerak bo'lgan barcha foydalanuvchilarni olamiz
+            all_users = db.users.find({"session": {"$ne": None}, "connected": True})
+            for doc in all_users:
+                uid = doc["_id"]
+                client = clients.get(uid)
+                if not client:
+                    log.warning(f"[{uid}] Keepalive: Client topilmadi (lekin DB da ulangan). Tiklanmoqda...")
+                    await get_client(uid)
+                else:
+                    try:
+                        if not client.is_connected() or not await client.is_user_authorized():
+                            log.warning(f"[{uid}] Keepalive: Client disconnected yoki unauthorized. Qayta ulanmoqda...")
+                            await get_client(uid)
+                    except Exception as ce:
+                        log.error(f"[{uid}] Keepalive check xatolik: {ce}. Qayta tiklanmoqda...")
+                        await get_client(uid)
+        except Exception as e:
+            log.error(f"Error in keepalive worker: {e}")
+        await asyncio.sleep(60)
 
 
 # ═══════════════════════════════════════
@@ -579,12 +669,11 @@ async def process_message_or_group(client: TelegramClient, events_in_group: list
         except Exception:
             delay_sec = 0
 
-        message_ids = [e.message.id for e in events_in_group]
-
         if delay_sec > 0:
+            message_ids = [e.message.id for e in events_in_group]
             add_to_delay_queue(uid, chat_id, message_ids, dest_id, delivery, settings, rule_index, delay_sec)
         else:
-            await send_message_now(client, uid, chat_id, message_ids, dest_id, delivery, settings, rule_index, data)
+            await send_instant(client, uid, events_in_group, dest_id, delivery, settings, rule_index)
     except Exception as e:
         log.error(f"[{uid}] process_message_or_group error: {e}")
 
@@ -597,6 +686,11 @@ async def get_client(uid: str) -> Optional[TelegramClient]:
             if c.is_connected() and await c.is_user_authorized():
                 return c
         except: pass
+        # Eski client ishlamaydi — o'chiramiz
+        try: await c.disconnect()
+        except: pass
+        del clients[uid]
+        handlers_registered.discard(uid)  # Bug #2 fix: handler qayta ro'yxatga olinishi uchun
 
     data = load(uid)
     if not data.get("session"):
@@ -608,6 +702,7 @@ async def get_client(uid: str) -> Optional[TelegramClient]:
         if await c.is_user_authorized():
             clients[uid] = c
             register_handler(uid, c)
+            log.info(f"[{uid}] Client qayta ulandi va handler ro'yxatga olindi ✅")
             return c
     except Exception as e:
         log.error(f"[{uid}] Client restore error: {e}")
@@ -629,19 +724,26 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         log.error(f"Webhook o'rnatishda xatolik: {e}")
 
-    # Barcha saqlangan sessionlarni tiklash
-    for f in DATA_DIR.glob("*.json"):
-        uid = f.stem
-        try:
-            data = json.loads(f.read_text("utf-8"))
-            if data.get("session") and data.get("connected"):
+    # Bug #1 fix: MongoDB dan barcha saqlangan sessionlarni tiklash (JSON fayllardan emas!)
+    try:
+        all_users = db.users.find({"session": {"$ne": None}, "connected": True})
+        restored = 0
+        for doc in all_users:
+            uid = doc["_id"]
+            try:
                 c = await get_client(uid)
                 if c:
+                    restored += 1
                     log.info(f"Session tiklandi: {uid}")
-        except Exception as e:
-            log.error(f"Startup restore {uid}: {e}")
-    # Start background delay queue worker
+            except Exception as e:
+                log.error(f"Startup restore {uid}: {e}")
+        log.info(f"Jami {restored} ta session tiklandi")
+    except Exception as e:
+        log.error(f"MongoDB dan sessionlarni tiklashda xatolik: {e}")
+    
+    # Start background workers
     asyncio.create_task(delay_queue_worker())
+    asyncio.create_task(keepalive_worker())
     yield
     # Shutdown — barcha clientlarni yopish
     for uid, c in clients.items():
