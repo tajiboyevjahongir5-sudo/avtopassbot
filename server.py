@@ -588,22 +588,32 @@ class UpdateFilters(BaseModel):
 # ═══════════════════════════════════════
 # FORWARD ENGINE
 # ═══════════════════════════════════════
+def normalize_uz_text(text: str) -> str:
+    """O'zbek tilidagi barcha xil tutuq belgilarini bir xil ko'rinishga keltirish"""
+    return re.sub(r"['‘’ʻʼ`]", "'", text)
+
 def check_filters(msg_text: str, views: int, reactions: int, sender_name: str, filters: list) -> bool:
     if not filters:
         return True
+    
+    msg_text_norm = normalize_uz_text(msg_text)
+    
     for f in filters:
         if not f.get("enabled", True):
             continue
         ftype = f.get("type", "exact")
         val = str(f.get("value", "")).strip()
-        if not val:
+        val_norm = normalize_uz_text(val)
+        
+        if not val_norm:
             continue
+            
         if ftype == "exact":
-            if val.lower() not in msg_text.lower():
+            if val_norm.lower() not in msg_text_norm.lower():
                 return False
         elif ftype == "regex":
             try:
-                if not re.search(val, msg_text, re.IGNORECASE):
+                if not re.search(val_norm, msg_text_norm, re.IGNORECASE):
                     return False
             except: pass
         elif ftype == "min_views":
@@ -629,6 +639,7 @@ def register_handler(uid: str, client: TelegramClient):
         return
 
     @client.on(events.NewMessage())
+    @client.on(events.MessageEdited())
     async def handler(event):
         data = load(uid)
         chat_id = str(event.chat_id)
