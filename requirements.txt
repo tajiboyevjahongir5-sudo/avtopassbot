@@ -1,0 +1,9 @@
+telethon==1.36.0
+fastapi==0.111.0
+uvicorn[standard]==0.30.0
+python-telegram-bot==20.7
+python-multipart==0.0.9
+python-dotenv==1.0.0
+pymongo>=4.0.0
+Pillow>=10.0.0
+
